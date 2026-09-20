@@ -1,0 +1,12 @@
+node_modules
+dist
+build
+.expo
+.expo-shared
+.env
+.env.local
+*.log
+.DS_Store
+coverage
+.parcel-cache
+.vite

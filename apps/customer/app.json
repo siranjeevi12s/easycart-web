@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "EasyCart",
+    "slug": "easycart-customer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF8F5"
+      },
+      "package": "com.siranjeevi12s.easycartcustomer"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "apiUrl": "http://10.37.96.145:5000"
+    }
+  }
+}
