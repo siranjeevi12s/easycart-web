@@ -5,6 +5,7 @@ import { api } from '../services/api';
 export default function Profile() {
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [form, setForm] = useState({ name: '', description: '', address: '', phone: '', image: '' });
+  const [editing, setEditing] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -18,8 +19,14 @@ export default function Profile() {
 
   const create = async () => {
     try {
-      await api.post('/restaurants', form);
-      setMsg('Restaurant profile created');
+      if (editing) {
+        await api.put(`/restaurants/${editing}`, form);
+        setMsg('Restaurant profile updated');
+      } else {
+        await api.post('/restaurants', form);
+        setMsg('Restaurant profile created');
+      }
+      setEditing(null);
       setForm({ name: '', description: '', address: '', phone: '', image: '' });
       setPreview(null);
       if (fileInputRef.current) {
@@ -27,6 +34,24 @@ export default function Profile() {
       }
       load();
     } catch (e: any) { setMsg(e.response?.data?.message || 'Failed'); }
+  };
+  const edit = (restaurant: any) => {
+    setEditing(restaurant._id);
+    setForm({
+      name: restaurant.name || '',
+      description: restaurant.description || '',
+      address: restaurant.address || '',
+      phone: restaurant.phone || '',
+      image: restaurant.image || '',
+    });
+    setPreview(restaurant.image || null);
+    setMsg('');
+  };
+  const cancelEdit = () => {
+    setEditing(null);
+    setForm({ name: '', description: '', address: '', phone: '', image: '' });
+    setPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
   const toggle = async (r: any, field: 'isOpen' | 'isActive') => {
     await api.put(`/restaurants/${r._id}`, { [field]: !r[field] });
@@ -81,14 +106,14 @@ export default function Profile() {
   };
 
   return (
-    <Box>
+    <Box sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
       <Typography variant="h5" fontWeight={700}>Restaurant Profile</Typography>
       <Typography color="text.secondary" sx={{ mb: 2 }}>Only active restaurants appear to customers. Closed restaurants cannot receive new orders.</Typography>
       {msg && <Alert sx={{ mb: 2 }}>{msg}</Alert>}
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography fontWeight={700} gutterBottom>Create / Add Restaurant</Typography>
+          <Typography fontWeight={700} gutterBottom>{editing ? 'Edit Restaurant' : 'Create / Add Restaurant'}</Typography>
           <Stack spacing={2}>
             <TextField label="Restaurant Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <TextField label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
@@ -194,7 +219,10 @@ export default function Profile() {
                 </Button>
               </Box>
             )}
-            <Button variant="contained" sx={{ bgcolor: '#FF6B35' }} onClick={create}>Create Profile</Button>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: '100%' }}>
+              <Button variant="contained" fullWidth sx={{ bgcolor: '#FF6B35' }} onClick={create}>{editing ? 'Update Profile' : 'Create Profile'}</Button>
+              {editing && <Button fullWidth onClick={cancelEdit}>Cancel</Button>}
+            </Stack>
           </Stack>
         </CardContent>
       </Card>
@@ -210,6 +238,7 @@ export default function Profile() {
                 <FormControlLabel control={<Switch checked={r.isOpen} onChange={() => toggle(r, 'isOpen')} />} label={r.isOpen ? 'Open' : 'Closed'} />
                 <FormControlLabel control={<Switch checked={r.isActive} onChange={() => toggle(r, 'isActive')} />} label={r.isActive ? 'Visible to Customers' : 'Hidden'} />
               </Stack>
+              <Button variant="outlined" sx={{ mt: 1, borderColor: '#FF6B35', color: '#FF6B35' }} onClick={() => edit(r)}>Edit Details</Button>
             </CardContent>
           </Card>
         ))}

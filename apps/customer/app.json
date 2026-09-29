@@ -2,6 +2,7 @@
   "expo": {
     "name": "EasyCart",
     "slug": "easycart-customer",
+    "scheme": "easycart",
     "version": "1.0.0",
     "orientation": "portrait",
     "platforms": [

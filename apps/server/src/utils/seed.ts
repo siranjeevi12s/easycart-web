@@ -27,6 +27,12 @@ const seed = async () => {
     isOpen: true,
     isActive: true,
     rating: 4.6,
+    // Demo payouts so seeded restaurants can accept orders out of the box
+    payoutMode: 'UPI',
+    payoutUpiId: 'spiceparadise@okhdfcbank',
+    payoutEnabled: true,
+    payoutVerified: true,
+    payoutUpdatedAt: new Date(),
   });
   const r2 = await Restaurant.create({
     ownerId: owner._id,
@@ -38,6 +44,11 @@ const seed = async () => {
     isOpen: true,
     isActive: true,
     rating: 4.4,
+    payoutMode: 'UPI',
+    payoutUpiId: 'burgerhub@okhdfcbank',
+    payoutEnabled: true,
+    payoutVerified: true,
+    payoutUpdatedAt: new Date(),
   });
   const r3 = await Restaurant.create({
     ownerId: owner._id,

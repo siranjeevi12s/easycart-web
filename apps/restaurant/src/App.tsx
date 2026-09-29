@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Orders from './pages/Orders';
 import Menu from './pages/Menu';
 import Profile from './pages/Profile';
+import Payments from './pages/Payments';
 import Layout from './components/Layout';
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,7 @@ export default function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/menu" element={<Menu />} />
+                <Route path="/payments" element={<Payments />} />
                 <Route path="/profile" element={<Profile />} />
               </Routes>
             </Layout>

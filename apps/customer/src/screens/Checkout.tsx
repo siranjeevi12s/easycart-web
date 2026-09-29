@@ -1,42 +1,70 @@
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { api } from '../services/api';
+import { api, BASE_URL } from '../services/api';
 import { CartContext } from '../context/AppContext';
 
 export default function Checkout({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { cart, clearCart } = useContext(CartContext);
   const [loading, setLoading] = useState(false);
+  const [payee, setPayee] = useState<any>(null);
   const subtotal = cart.items.reduce((s: number, i: any) => s + i.price * i.quantity, 0);
   const tax = Math.round(subtotal * 0.05);
   const total = subtotal + tax;
+
+  // Load restaurant payout info so customer sees where money goes (real-world trust)
+  useEffect(() => {
+    if (!cart.restaurantId) return;
+    api.get(`/restaurants/${cart.restaurantId}/payment-info`)
+      .then(({ data }) => setPayee(data))
+      .catch(() => setPayee(null));
+  }, [cart.restaurantId]);
 
   const pay = async () => {
     if (!cart.restaurantId) return Alert.alert('No restaurant');
     setLoading(true);
     try {
-      // 1. Create order (backend calculates authoritative price)
+      // 1. Create order (backend prices from MenuItem + computes commission split)
       const { data: order } = await api.post('/orders', {
         restaurantId: cart.restaurantId,
         items: cart.items.map((i: any) => ({ menuItemId: i._id, quantity: i.quantity }))
       });
-      // 2. Create Razorpay intent (mock, Test Mode)
+      // 2. Create Razorpay order (Route transfer attached when restaurant is linked)
       const { data: intent } = await api.post('/payments/create', { orderId: order._id });
-      // 3. Simulate Razorpay checkout — in real app open Razorpay SDK
-      // For MVP: auto-verify with test_success signature
-      const verify = await api.post('/payments/verify', {
+
+      const isMock = intent.mode === 'mock' || String(intent.keyId || '').includes('dummy');
+      if (isMock) {
+        // Dev: mock gateway auto-verifies (backend accepts test_success only with dummy keys)
+        const verify = await api.post('/payments/verify', {
+          orderId: order._id,
+          razorpay_order_id: intent.razorpayOrderId,
+          razorpay_payment_id: `pay_${Date.now()}`,
+          razorpay_signature: 'test_success'
+        });
+        Alert.alert('Payment Success ✅', `Order ${verify.data.order.orderNumber} PAID.`);
+        clearCart();
+        navigation.replace('OrderTracking', { orderId: verify.data.order._id });
+        return;
+      }
+
+      // 3. Real mode: in-app secure checkout. UPI taps hand off to the user's
+      //    UPI apps (GPay/PhonePe/Paytm); result returns automatically for verify.
+      setLoading(false);
+      navigation.navigate('Payment', {
+        checkoutUrl: `${BASE_URL}${intent.checkoutPath}`,
         orderId: order._id,
-        razorpay_order_id: intent.razorpayOrderId,
-        razorpay_payment_id: `pay_${Date.now()}`,
-        razorpay_signature: 'test_success'
       });
-      Alert.alert('Payment Success ✅', `Order ${verify.data.order.orderNumber} PAID. Restaurant will prepare.`);
-      clearCart();
-      navigation.replace('OrderTracking', { orderId: verify.data.order._id });
     } catch (e: any) {
-      Alert.alert('Payment failed', e.response?.data?.message || 'Try again');
-    } finally { setLoading(false); }
+      const code = e.response?.data?.code;
+      const message = e.response?.data?.message || e.message || 'Try again';
+      if (code === 'PAYOUT_NOT_CONFIGURED') {
+        Alert.alert('Restaurant not accepting payments', message);
+      } else {
+        Alert.alert('Payment failed', message);
+      }
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,12 +80,29 @@ export default function Checkout({ navigation }: any) {
           <Text style={{ fontSize: 11, color: '#666', marginTop: 8 }}>Backend will recalculate — never trusts frontend total.</Text>
         </View>
         <View style={s.card}>
-          <Text style={{ fontWeight: '700' }}>Razorpay Test Mode</Text>
-          <Text style={{ color: '#666', fontSize: 12, marginTop: 4 }}>No real money. Tap Pay to simulate success. Payment isolated in paymentService — swappable provider.</Text>
+          <Text style={{ fontWeight: '700' }}>
+            {payee?.payoutEnabled ? `Paying to ${payee.restaurantName}` : 'Payment destination'}
+          </Text>
+          {payee ? (
+            payee.payoutEnabled ? (
+              <Text style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
+                {payee.payoutMode === 'UPI' && payee.payoutUpiId
+                  ? `Settles to restaurant UPI ${payee.payoutUpiId} via Razorpay.`
+                  : `Settles to ${payee.payoutBankName || 'restaurant bank account'} via Razorpay.`}
+              </Text>
+            ) : (
+              <Text style={{ color: '#B45309', fontSize: 12, marginTop: 4 }}>
+                ⚠️ This restaurant hasn't configured payouts yet — payment may be unavailable.
+              </Text>
+            )
+          ) : (
+            <Text style={{ color: '#666', fontSize: 12, marginTop: 4 }}>Verifying restaurant payment setup…</Text>
+          )}
         </View>
         <TouchableOpacity style={[s.btn, loading && { opacity: 0.6 }]} onPress={pay} disabled={loading}>
-          <Text style={s.btnText}>{loading ? 'Processing…' : `Pay ₹${total} • Razorpay Test`}</Text>
+          <Text style={s.btnText}>{loading ? 'Processing…' : `Pay ₹${total} • Razorpay`}</Text>
         </TouchableOpacity>
+        <Text style={{ fontSize: 11, color: '#666', marginTop: 8, textAlign: 'center' }}>UPI • Cards • Netbanking — stays inside the app</Text>
       </View>
     </ScrollView>
   );

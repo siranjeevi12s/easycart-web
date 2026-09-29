@@ -11,8 +11,8 @@ export const generateOrderNumber = async (): Promise<string> => {
     const exists = await Order.findOne({ orderNumber: candidate }).select('_id').lean();
     if (!exists) return candidate;
   }
-  // Fallback to timestamp-based if collisions persist
-  return `#FD-${Math.floor(1000 + Math.random() * 9000)}-${Date.now().toString().slice(-3)}`;
+  // Last resort: generate another random (should almost never happen)
+  return `#FD-${Math.floor(1000 + Math.random() * 9000)}`;
 };
 
 export const generateOrderNumberDB = generateOrderNumber;

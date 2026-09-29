@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
 import { AuthContext } from '../context/AppContext';
 
-export default function Register() {
+export default function Register({ navigation }: any) {
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '' });
   const { setUser } = useContext(AuthContext);
   const submit = async () => {
@@ -26,6 +26,7 @@ export default function Register() {
       <TextInput style={s.input} placeholder="Phone" value={form.phone} onChangeText={(v) => setForm({ ...form, phone: v })} />
       <TextInput style={s.input} placeholder="Password" value={form.password} onChangeText={(v) => setForm({ ...form, password: v })} secureTextEntry />
       <TouchableOpacity style={s.btn} onPress={submit}><Text style={s.btnText}>Register</Text></TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.navigate('Login')}><Text style={s.link}>Already have an account? Login</Text></TouchableOpacity>
     </View>
   );
 }
@@ -34,5 +35,6 @@ const s = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '700' }, sub: { color: '#666', marginBottom: 16 },
   input: { backgroundColor: 'white', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#FFE8DE' },
   btn: { backgroundColor: '#FF6B35', padding: 16, borderRadius: 12, alignItems: 'center' },
-  btnText: { color: 'white', fontWeight: '700' }
+  btnText: { color: 'white', fontWeight: '700' },
+  link: { textAlign: 'center', color: '#FF6B35', marginTop: 12, fontWeight: '600' }
 });

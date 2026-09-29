@@ -5,6 +5,7 @@ import RestaurantIcon from '@mui/icons-material/Restaurant';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -17,6 +18,7 @@ const nav = [
   { label: 'Dashboard', path: '/', icon: <DashboardIcon fontSize="small" /> },
   { label: 'Orders', path: '/orders', icon: <ReceiptLongIcon fontSize="small" /> },
   { label: 'Menu', path: '/menu', icon: <MenuBookIcon fontSize="small" /> },
+  { label: 'Payments', path: '/payments', icon: <AccountBalanceIcon fontSize="small" /> },
   { label: 'Profile', path: '/profile', icon: <RestaurantIcon fontSize="small" /> },
 ];
 

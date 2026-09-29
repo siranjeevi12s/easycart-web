@@ -4,7 +4,7 @@ import { MenuItem } from '../models/MenuItem';
 import { Restaurant } from '../models/Restaurant';
 
 export const getMenu = async (req: AuthRequest, res: Response) => {
-  const items = await MenuItem.find({ restaurantId: req.params.restaurantId }).sort({ category: 1, name: 1 });
+  const items = await MenuItem.find({ restaurantId: req.params.restaurantId, isDeleted: false }).sort({ category: 1, name: 1 });
   res.json(items);
 };
 
@@ -12,6 +12,7 @@ export const addMenuItem = async (req: AuthRequest, res: Response) => {
   const { restaurantId } = req.params;
   const restaurant = await Restaurant.findById(restaurantId);
   if (!restaurant) return res.status(404).json({ message: 'Restaurant not found' });
+  if (restaurant.isDeleted) return res.status(404).json({ message: 'Restaurant removed' });
   if (restaurant.ownerId.toString() !== req.user!.id && req.user!.role !== 'admin')
     return res.status(403).json({ message: 'Forbidden' });
   const item = await MenuItem.create({ restaurantId, ...req.body });
@@ -19,8 +20,9 @@ export const addMenuItem = async (req: AuthRequest, res: Response) => {
 };
 
 export const updateMenuItem = async (req: AuthRequest, res: Response) => {
-  const item = await MenuItem.findById(req.params.itemId).populate('restaurantId');
+  const item = await MenuItem.findById(req.params.itemId);
   if (!item) return res.status(404).json({ message: 'Not found' });
+  if (item.isDeleted) return res.status(404).json({ message: 'Item removed' });
   const restaurant = await Restaurant.findById(item.restaurantId);
   if (restaurant && restaurant.ownerId.toString() !== req.user!.id && req.user!.role !== 'admin')
     return res.status(403).json({ message: 'Forbidden' });
@@ -32,9 +34,11 @@ export const updateMenuItem = async (req: AuthRequest, res: Response) => {
 export const deleteMenuItem = async (req: AuthRequest, res: Response) => {
   const item = await MenuItem.findById(req.params.itemId);
   if (!item) return res.status(404).json({ message: 'Not found' });
+  if (item.isDeleted) return res.status(404).json({ message: 'Already removed' });
   const restaurant = await Restaurant.findById(item.restaurantId);
   if (restaurant && restaurant.ownerId.toString() !== req.user!.id && req.user!.role !== 'admin')
     return res.status(403).json({ message: 'Forbidden' });
-  await item.deleteOne();
-  res.json({ message: 'Deleted' });
+  item.isDeleted = true;
+  await item.save();
+  res.json({ message: 'Soft deleted' });
 };

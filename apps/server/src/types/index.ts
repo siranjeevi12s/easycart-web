@@ -3,7 +3,7 @@ import { Request } from 'express';
 export type UserRole = 'customer' | 'restaurant' | 'admin';
 
 export type OrderStatus = 'PENDING_PAYMENT' | 'PAID' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'PICKED_UP' | 'CANCELLED';
-export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
 
 export interface JWTPayload {
   id: string;
