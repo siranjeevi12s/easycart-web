@@ -15,7 +15,7 @@
     "@react-navigation/native": "^6.0.18",
     "@react-navigation/native-stack": "^6.9.26",
     "axios": "^1.7.9",
-    "expo": "~57.0.24",
+    "expo": "~57.0.26",
     "expo-constants": "~57.0.18",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
@@ -24,6 +24,7 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
+    "react-native-webview": "13.16.1",
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {

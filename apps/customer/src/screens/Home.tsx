@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { api } from '../services/api';
+import { api, BASE_URL } from '../services/api';
 
 export default function Home({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -34,11 +34,11 @@ export default function Home({ navigation }: any) {
     <View style={[s.container, { paddingTop: insets.top + 16 }]}>
       <Text style={s.header}>Discover Restaurants</Text>
       <Text style={s.sub}>Pre-order for quick pickup — no waiting</Text>
-      <TextInput style={s.search} placeholder="Search restaurant name…" value={q} onChangeText={setQ} />
+      <TextInput style={s.search} placeholder="Search restaurants or menu items…" value={q} onChangeText={setQ} />
       {error ? (
         <View style={s.errorBox}>
           <Text style={s.errorText}>⚠️ {error}</Text>
-          <Text style={s.errorSub}>Check server is running on {require('../services/api').BASE_URL}</Text>
+          <Text style={s.errorSub}>Check server is running at {BASE_URL.replace(/\/api/, '')}</Text>
           <TouchableOpacity onPress={() => load(q)} style={s.retryBtn}><Text style={s.retryText}>Retry</Text></TouchableOpacity>
         </View>
       ) : null}
@@ -72,7 +72,7 @@ export default function Home({ navigation }: any) {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF8F5', padding: 16 },
   header: { fontSize: 22, fontWeight: '800' }, sub: { color: '#666', marginBottom: 12 },
-  search: { backgroundColor: 'white', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#FFE8DE', marginBottom: 12 },
+  search: { backgroundColor: 'white', borderRadius: 12, height: 48, paddingHorizontal: 14, paddingVertical: 0, textAlignVertical: 'center', borderWidth: 1, borderColor: '#FFE8DE', marginBottom: 12 },
   card: { backgroundColor: 'white', borderRadius: 16, overflow: 'hidden', marginBottom: 12, flexDirection: 'row', elevation: 2, shadowColor: '#FF6B35', shadowOpacity: 0.08 },
   img: { width: 110, height: 110 },
   name: { fontWeight: '700', fontSize: 15, flex: 1 }, rating: { fontWeight: '700', color: '#FF6B35' },

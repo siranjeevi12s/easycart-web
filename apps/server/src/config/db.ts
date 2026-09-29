@@ -1,26 +1,31 @@
 import mongoose from 'mongoose';
 import { env } from './env';
 
-export const connectDB = async (retries = 3) => {
+export const connectDB = async (retries = 5) => {
   if (!env.MONGODB_URI) {
     console.error('❌ MONGODB_URI missing in .env');
     process.exit(1);
   }
-  // Mask password for logs
   const masked = env.MONGODB_URI.replace(/:\/\/.+@/, '://***:***@');
   console.log(`Connecting to MongoDB: ${masked}`);
 
   mongoose.connection.on('error', (err) => console.error('MongoDB error:', err.message));
   mongoose.connection.on('disconnected', () => console.warn('MongoDB disconnected'));
   mongoose.connection.on('reconnected', () => console.log('MongoDB reconnected'));
+  mongoose.connection.on('close', () => console.warn('MongoDB connection closed'));
 
   for (let i = 1; i <= retries; i++) {
     try {
       const conn = await mongoose.connect(env.MONGODB_URI, {
-        serverSelectionTimeoutMS: 10000,
-        socketTimeoutMS: 45000,
-        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 15000,
+        socketTimeoutMS: 30000,
+        connectTimeoutMS: 10000,
+        maxPoolSize: 20,
+        minPoolSize: 5,
+        maxIdleTimeMS: 30000,
         retryWrites: true,
+        retryReads: true,
+        heartbeatFrequencyMS: 10000,
       });
       console.log(`✅ MongoDB Connected: ${conn.connection.host} / db: ${conn.connection.name}`);
       return conn;

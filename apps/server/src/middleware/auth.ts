@@ -9,9 +9,10 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
   const token = header.split(' ')[1];
   try {
     const payload = verifyToken(token);
-    const user = await User.findById(payload.id).select('email role');
-    if (!user) return res.status(401).json({ message: 'Unauthorized: User not found' });
+    const user = await User.findById(payload.id).select('email role isDeleted');
+    if (!user || user.isDeleted) return res.status(401).json({ message: 'Unauthorized: Account removed' });
     req.user = { id: payload.id, role: payload.role, email: user.email };
+    await User.findByIdAndUpdate(payload.id, { lastLoginAt: new Date() });
     next();
   } catch {
     return res.status(401).json({ message: 'Unauthorized: Invalid or expired token' });

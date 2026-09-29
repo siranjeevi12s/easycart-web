@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, BASE_URL } from '../services/api';
@@ -13,29 +13,34 @@ export default function OrderTracking({ route }: any) {
   const { orderId } = route.params;
   const [order, setOrder] = useState<any>(null);
   const [qr, setQr] = useState<any>(null);
+  const [socket, setSocket] = useState<any>(null);
 
-  const load = async () => {
-    const { data } = await api.get(`/orders/${orderId}`);
-    setOrder(data);
+  const load = useCallback(async () => {
     try {
-      const { data: qrData } = await api.get(`/orders/${orderId}/qr`);
-      setQr(qrData);
+      const { data } = await api.get(`/orders/${orderId}`);
+      setOrder(data);
+      try {
+        const { data: qrData } = await api.get(`/orders/${orderId}/qr`);
+        setQr(qrData);
+      } catch {}
     } catch {}
-  };
+  }, [orderId]);
 
   useEffect(() => {
     load();
-    let socket: any;
+    let sock: any;
     (async () => {
       const token = await AsyncStorage.getItem('token');
-      socket = io(BASE_URL, { auth: { token } });
-      socket.emit('join:order', orderId);
-      socket.on('order:update', (o: any) => { if (o._id === orderId) setOrder(o); });
-      socket.on('order:ready', (o: any) => { if (o._id === orderId) setOrder(o); });
+      sock = io(BASE_URL, { auth: { token }, transports: ['websocket', 'polling'] });
+      const customerId = (await AsyncStorage.getItem('user')) ? JSON.parse(await AsyncStorage.getItem('user') || '{}').id || JSON.parse(await AsyncStorage.getItem('user') || '{}')._id : null;
+      if (customerId) sock.emit('join:customer', customerId);
+      sock.on('order:update', (o: any) => { if (o._id === orderId) setOrder(o); });
+      sock.on('order:ready', (o: any) => { if (o._id === orderId) setOrder(o); });
+      setSocket(sock);
     })();
-    const interval = setInterval(load, 5000); // fallback polling
-    return () => { clearInterval(interval); socket?.disconnect(); };
-  }, []);
+    const interval = setInterval(load, 5000);
+    return () => { clearInterval(interval); sock?.disconnect(); };
+  }, [orderId, load]);
 
   if (!order) return <View style={[s.center, { paddingTop: insets.top + 16 }]}><ActivityIndicator color="#FF6B35" /></View>;
 

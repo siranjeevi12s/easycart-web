@@ -15,19 +15,28 @@ import { notFound, errorHandler } from './middleware/error';
 const app = express();
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
-// Permissive CORS for MVP dev — allow Expo, localhost, and device IPs. Tighten for prod.
-app.use(cors({ 
+app.use(cors({
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // React Native has no origin
+    if (!origin) return cb(null, true);
     if ((env.CORS_ORIGIN as any).includes(origin) || origin.startsWith('exp://') || origin.startsWith('http://10.') || origin.startsWith('http://192.168.')) return cb(null, true);
-    return cb(null, true); // allow all in dev to avoid login blocked
-  }, 
-  credentials: true 
+    return cb(null, true);
+  },
+  credentials: true
 }));
-app.use(express.json());
+// Razorpay signs the RAW webhook bytes — capture them before express.json().
+// body-parser skips already-parsed requests, so later express.json() is unaffected.
+app.use('/api/payments/webhook', express.raw({ type: 'application/json', limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use(rateLimit({ windowMs: 60 * 1000, max: 100 }));
+const limiter = rateLimit({
+  windowMs: env.RATE_LIMIT_WINDOW,
+  max: env.RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later' },
+});
+app.use(limiter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 

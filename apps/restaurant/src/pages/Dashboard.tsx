@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Grid, Card, CardContent, Typography, Box, Chip, Button, Stack, Alert, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, TextField } from '@mui/material';
-import { api } from '../services/api';
+import { Link } from 'react-router-dom';
+import { api, SOCKET_URL } from '../services/api';
 import { io } from 'socket.io-client';
 
 const canCancel = (status: string) => status === 'PAID' || status === 'ACCEPTED';
@@ -12,6 +13,7 @@ export default function Dashboard() {
   const [cancelTarget, setCancelTarget] = useState<any | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [pickupCode, setPickupCode] = useState<Record<string, string>>({});
+  const [payoutMissing, setPayoutMissing] = useState<string[]>([]);
   const [snack, setSnack] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({ open: false, msg: '', sev: 'success' });
 
   const fetch = async () => {
@@ -28,11 +30,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetch();
-    const SOCKET_URL = (import.meta as any).env?.VITE_SOCKET_URL || 'http://localhost:5000';
     const socket = io(SOCKET_URL, { auth: { token: localStorage.getItem('token') } });
-    // join restaurant room after fetching my restaurants
+    // join restaurant room after fetching my restaurants + check payout setup
     api.get('/restaurants/my').then(({ data }) => {
       data.forEach((r: any) => socket.emit('join:restaurant', r._id));
+      setPayoutMissing(data.filter((r: any) => !r.payoutEnabled).map((r: any) => r.name));
     });
     socket.on('order:new', (order: any) => {
       fetch();
@@ -94,7 +96,12 @@ export default function Dashboard() {
   return (
     <Box>
       <Typography variant="h5" fontWeight={700} gutterBottom>Good evening, Chef 👋</Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>Orders before they arrive — prepare, mark READY, instant pickup.</Typography>
+      <Typography color="text.secondary" sx={{ mb: 2 }}>Orders before they arrive — prepare, mark READY, instant pickup.</Typography>
+      {payoutMissing.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }} action={<Button component={Link} to="/payments" size="small" variant="contained" sx={{ bgcolor: '#FF6B35', whiteSpace: 'nowrap' }}>Setup payouts</Button>}>
+          <b>{payoutMissing.join(', ')}</b> cannot receive orders yet — add your UPI / bank details to receive order amounts. Customers can't pay until this is done.
+        </Alert>
+      )}
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} md={4}>

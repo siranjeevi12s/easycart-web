@@ -15,6 +15,7 @@ import HomeScreen from './src/screens/Home';
 import RestaurantScreen from './src/screens/Restaurant';
 import CartScreen from './src/screens/Cart';
 import CheckoutScreen from './src/screens/Checkout';
+import PaymentScreen from './src/screens/Payment';
 import OrderTrackingScreen from './src/screens/OrderTracking';
 import OrderHistoryScreen from './src/screens/OrderHistory';
 import ProfileScreen from './src/screens/Profile';
@@ -57,7 +58,7 @@ function InnerApp() {
     let socket: any;
     (async () => {
       const token = await AsyncStorage.getItem('token');
-      socket = io(BASE_URL, { auth: { token }, transports: ['websocket'] });
+      socket = io(BASE_URL, { auth: { token }, transports: ['websocket', 'polling'] });
       const customerId = user.id || user._id;
       socket.emit('join:customer', customerId);
       socket.on('order:ready', (order: any) => {
@@ -121,6 +122,7 @@ function InnerApp() {
                 <Stack.Screen name="Main" component={Tabs} />
                 <Stack.Screen name="Restaurant" component={RestaurantScreen} options={{ headerShown: true, title: 'Menu' }} />
                 <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ headerShown: true, title: 'Checkout' }} />
+                <Stack.Screen name="Payment" component={PaymentScreen} options={{ headerShown: true, title: 'Secure Payment' }} />
                 <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} options={{ headerShown: true, title: 'Track Order' }} />
               </>
             )}

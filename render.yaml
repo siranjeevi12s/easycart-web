@@ -1,0 +1,47 @@
+# Render Blueprint for EasyCart backend.
+# Usage: push this repo to GitHub, then Render Dashboard -> New -> Blueprint -> select repo.
+# Secrets (JWT, Razorpay, Mongo) are set in the Render dashboard, never in this file.
+services:
+  - type: web
+    name: easycart-server
+    runtime: node
+    rootDir: apps/server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false # Atlas connection string (Dashboard -> Environment)
+      - key: JWT_SECRET
+        sync: false # generate: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+      - key: JWT_REFRESH_SECRET
+        sync: false # generate another value with the same command
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      - key: RAZORPAY_KEY_ID
+        sync: false # rzp_live_... (Dashboard -> Settings -> API Keys, LIVE mode)
+      - key: RAZORPAY_KEY_SECRET
+        sync: false # live secret
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false # secret you set when creating the webhook
+      - key: PLATFORM_FEE_PERCENT
+        value: 5
+      - key: RAZORPAY_ROUTE_ENABLED
+        value: false
+      - key: APP_DEEP_SCHEME
+        value: easycart
+      - key: CLIENT_URL
+        value: https://easycart-demo-dev.netlify.app
+      - key: CORS_ORIGIN
+        value: https://easycart-demo-dev.netlify.app
+      - key: RATE_LIMIT_MAX
+        value: 300
+      - key: RATE_LIMIT_WINDOW
+        value: 60000
