@@ -6,7 +6,32 @@ import { generateOrderNumber } from '../utils/orderNumber';
 import { computeSplit } from '../utils/commission';
 
 export const orderService = {
-  async createOrder(customerId: string, restaurantId: string, items: { menuItemId: string; quantity: number }[], paymentMethod?: string) {
+  /**
+   * Multi-seller checkout: items may span restaurants. Creates ONE order per
+   * restaurant, all linked by batchId and paid by a SINGLE gateway payment
+   * (split via Route transfers[]). Totals stay backend-authoritative.
+   * Returns { batchId, orders } — single-restaurant carts yield one order.
+   */
+  async createBatch(customerId: string, items: { restaurantId: string; menuItemId: string; quantity: number }[], paymentMethod?: string) {
+    if (!Array.isArray(items) || items.length === 0)
+      throw Object.assign(new Error('items required'), { status: 400 });
+    const groups = new Map<string, { menuItemId: string; quantity: number }[]>();
+    for (const it of items) {
+      if (!it.restaurantId || !it.menuItemId) throw Object.assign(new Error('restaurantId and menuItemId required per item'), { status: 400 });
+      const list = groups.get(it.restaurantId) || [];
+      list.push({ menuItemId: it.menuItemId, quantity: it.quantity });
+      groups.set(it.restaurantId, list);
+    }
+    const batchId = `B_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+    const orders: any[] = [];
+    for (const [restaurantId, grub] of groups) {
+      const order = await this.createOrder(customerId, restaurantId, grub, paymentMethod, batchId);
+      orders.push(order);
+    }
+    return { batchId, orders };
+  },
+
+  async createOrder(customerId: string, restaurantId: string, items: { menuItemId: string; quantity: number }[], paymentMethod?: string, batchId?: string) {
     const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant) throw Object.assign(new Error('Restaurant not found'), { status: 404 });
     if (restaurant.isDeleted) throw Object.assign(new Error('Restaurant removed'), { status: 404 });
@@ -49,6 +74,7 @@ export const orderService = {
       try {
         order = await Order.create({
           orderNumber,
+          batchId,
           customerId,
           restaurantId,
           items: snapshots,

@@ -10,6 +10,7 @@ import {
   getPublicPaymentInfo,
   listSettlements,
   markSettled,
+  createRouteAccount,
 } from '../controllers/restaurantController';
 import { authenticate, authorize } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -22,6 +23,7 @@ router.get('/my', authenticate, asyncHandler(myRestaurants));
 router.get('/:id/payment-info', asyncHandler(getPublicPaymentInfo));
 router.get('/:id/payout', authenticate, asyncHandler(getPayoutDetails));
 router.put('/:id/payout', authenticate, authorize('restaurant', 'admin'), asyncHandler(updatePayoutDetails));
+router.post('/:id/route-account', authenticate, authorize('restaurant', 'admin'), asyncHandler(createRouteAccount));
 router.get('/:id/settlements', authenticate, asyncHandler(listSettlements));
 router.patch('/:id/settlements/:orderId', authenticate, authorize('restaurant', 'admin'), asyncHandler(markSettled));
 router.get('/:id', asyncHandler(getRestaurant));

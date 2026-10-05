@@ -21,6 +21,13 @@ try {
   Razorpay = null;
 }
 
+export interface RouteTransfer {
+  account: string;
+  amount: number; // paise
+  orderId?: string;
+  restaurantId?: string;
+}
+
 export interface CreateOrderIntent {
   amount: number; // in paise
   currency?: string;
@@ -30,6 +37,8 @@ export interface CreateOrderIntent {
   // Marketplace split in paise
   restaurantAmountPaise?: number;
   linkedAccountId?: string;
+  // Multi-seller: explicit per-restaurant transfers (Route). Remainder stays with platform.
+  transfers?: RouteTransfer[];
 }
 
 export interface VerifyPayload {
@@ -80,15 +89,31 @@ export const paymentService = {
     orderId,
     restaurantAmountPaise,
     linkedAccountId,
+    transfers: explicitTransfers,
   }: CreateOrderIntent) {
     const client = getClient();
-    const canRoute =
-      !!client &&
-      this.routeEnabled() &&
-      !!linkedAccountId &&
-      !!restaurantAmountPaise &&
-      restaurantAmountPaise > 0 &&
-      restaurantAmountPaise < amount;
+    // Multi-seller transfers win when present; else single-restaurant transfer.
+    const transfers = (explicitTransfers || [])
+      .filter((t) => t.account && t.amount > 0)
+      .map((t) => ({
+        account: t.account,
+        amount: t.amount,
+        currency,
+        notes: { orderId: t.orderId || orderId || '', restaurantId: t.restaurantId || restaurantId || '' },
+      }));
+    const single = !transfers.length && linkedAccountId && restaurantAmountPaise && restaurantAmountPaise > 0 && restaurantAmountPaise < amount
+      ? [{
+          account: linkedAccountId,
+          amount: restaurantAmountPaise,
+          currency,
+          notes: { orderId: orderId || '', restaurantId: restaurantId || '' },
+        }]
+      : [];
+    const all = [...transfers, ...single];
+    const routedTotal = all.reduce((s, t) => s + t.amount, 0);
+    // Route rejects transfers >= order amount (platform must retain >= 0; keep 0 allowed? require remainder);
+    // drop the split if invalid rather than killing checkout.
+    const canRoute = !!client && this.routeEnabled() && all.length > 0 && routedTotal < amount;
 
     if (client) {
       const payload: any = {
@@ -103,14 +128,7 @@ export const paymentService = {
         },
       };
       if (canRoute) {
-        payload.transfers = [
-          {
-            account: linkedAccountId,
-            amount: restaurantAmountPaise,
-            currency,
-            notes: { orderId: orderId || '', restaurantId: restaurantId || '' },
-          },
-        ];
+        payload.transfers = all;
       }
       try {
         const order = await client.orders.create(payload);
@@ -248,6 +266,72 @@ export const paymentService = {
     } catch (err: any) {
       console.error('[paymentService] transfer failed:', err?.message || err);
       throw Object.assign(new Error(err?.message || 'Transfer failed at gateway'), { status: 502 });
+    }
+  },
+
+  /**
+   * Create a Razorpay Route linked account (test mode accepts test KYC).
+   * Returns the acc_xxx id to store on the restaurant.
+   */
+  async createLinkedAccount(details: {
+    email: string;
+    phone: string;
+    legalBusinessName: string;
+    customerFacingName?: string;
+    businessType?: string;
+    contactName?: string;
+    pan?: string;
+    accountNumber?: string;
+    ifsc?: string;
+  }): Promise<any> {
+    if (!hasRealKeys()) throw Object.assign(new Error('Razorpay not configured'), { status: 503 });
+    const body: any = {
+      email: details.email,
+      phone: details.phone,
+      type: 'route',
+      legal_business_name: details.legalBusinessName,
+      customer_facing_business_name: details.customerFacingName || details.legalBusinessName,
+      business_type: details.businessType || 'individual',
+      contact_name: details.contactName || details.legalBusinessName,
+      profile: {
+        category: 'food',
+        subcategory: 'restaurant',
+        addresses: {
+          registered: {
+            street1: 'Test Street',
+            street2: 'Pune',
+            city: 'Pune',
+            state: 'Maharashtra',
+            postal_code: '411001',
+            country: 'IN',
+          },
+        },
+      },
+      legal_info: { ...(details.pan ? { pan: details.pan } : {}) },
+      tnc_accepted: true,
+    };
+    if (details.accountNumber && details.ifsc) {
+      body.account_detail = { account_number: details.accountNumber, ifsc: details.ifsc };
+    }
+    try {
+      // Prefer raw REST for full error visibility (SDK swallows details)
+      const res = await fetch('https://api.razorpay.com/v1/accounts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Basic ' + Buffer.from(`${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`).toString('base64'),
+        },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = (json as any)?.error?.description || (json as any)?.message || `Razorpay ${res.status}`;
+        throw Object.assign(new Error(`Razorpay linked account: ${msg}`), { status: 502 });
+      }
+      return json;
+    } catch (e: any) {
+      if (e.status) throw e;
+      throw Object.assign(new Error(`Razorpay linked account failed: ${e.message}`), { status: 502 });
     }
   },
 };

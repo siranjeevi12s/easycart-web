@@ -10,16 +10,16 @@ const router = Router();
 router.use(authenticate, authorize('admin'));
 
 router.get('/customers', asyncHandler(async (_req, res) => {
-  const users = await User.find({ role: 'customer', isDeleted: false }).select('-passwordHash');
+  const users = await User.find({ role: 'customer', isDeleted: { $ne: true } }).select('-passwordHash');
   res.json(users);
 }));
 router.get('/restaurants', asyncHandler(async (_req, res) => {
-  const list = await Restaurant.find({ isDeleted: false }).populate('ownerId', 'name email');
+  const list = await Restaurant.find({ isDeleted: { $ne: true } }).populate('ownerId', 'name email');
   res.json(list);
 }));
 router.patch('/restaurants/:id/toggle', toggleRestaurant);
 router.get('/orders', asyncHandler(async (_req, res) => {
-  const orders = await Order.find({ isDeleted: false }).sort({ createdAt: -1 }).limit(100).populate('restaurantId customerId');
+  const orders = await Order.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 }).limit(100).populate('restaurantId customerId');
   res.json(orders);
 }));
 

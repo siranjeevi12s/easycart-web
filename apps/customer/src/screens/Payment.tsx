@@ -21,7 +21,11 @@ function parseQuery(url: string): Record<string, string> {
 }
 
 export default function PaymentScreen({ route, navigation }: any) {
-  const { checkoutUrl, orderId } = route.params || {};
+  const { checkoutUrl, orderId, orderIds: routeOrderIds, batchId } = route.params || {};
+  // Sibling orders covered by this one payment (multi-seller batch)
+  const batchIds: string[] = Array.isArray(routeOrderIds) && routeOrderIds.length
+    ? routeOrderIds
+    : orderId ? [orderId] : [];
   const insets = useSafeAreaInsets();
   const { clearCart } = useContext(CartContext);
   const [verifying, setVerifying] = useState(false);
@@ -38,16 +42,16 @@ export default function PaymentScreen({ route, navigation }: any) {
     doneRef.current = true;
     stopPolling();
     clearCart();
-    navigation.replace('OrderTracking', { orderId });
-    if (orderNumber) Alert.alert('Payment Success ✅', `Order ${orderNumber} confirmed. Restaurant will prepare.`);
+    navigation.replace('OrderTracking', { orderId: batchIds[0], orderIds: batchIds, batchId });
+    if (orderNumber) Alert.alert('Payment Success ✅', `Order${batchIds.length > 1 ? `s (${batchIds.length})` : ` ${orderNumber}`} confirmed. Restaurants will prepare.`);
   };
 
   // Webhook may confirm even if the deep-link return is missed — poll as backup
   useEffect(() => {
-    if (!orderId) return;
+    if (!batchIds.length) return;
     pollRef.current = setInterval(async () => {
       try {
-        const { data } = await api.get(`/payments/status/${orderId}`);
+        const { data } = await api.get(`/payments/status/${batchIds[0]}`);
         if (data.paymentStatus === 'PAID') onPaid(data.orderNumber);
         else if (['FAILED', 'CANCELLED', 'REFUNDED'].includes(data.paymentStatus)) {
           stopPolling();
@@ -64,12 +68,20 @@ export default function PaymentScreen({ route, navigation }: any) {
     if (doneRef.current || verifying) return;
     setVerifying(true);
     try {
-      const { data } = await api.post('/payments/verify', {
-        orderId,
+      // Batch ids can arrive as CSV (deep link) or array (JS bridge)
+      const cbIds: string[] = Array.isArray((p as any).orderIds) && (p as any).orderIds.length
+        ? (p as any).orderIds
+        : typeof p.orderIds === 'string' && p.orderIds
+          ? p.orderIds.split(',').filter(Boolean)
+          : batchIds;
+      const ids = cbIds.length ? cbIds : batchIds;
+      const body = {
+        orderIds: ids,
         razorpay_order_id: p.razorpay_order_id,
         razorpay_payment_id: p.razorpay_payment_id,
         razorpay_signature: p.razorpay_signature,
-      });
+      };
+      const { data } = await api.post('/payments/verify', body);
       onPaid(data.order?.orderNumber);
     } catch (e: any) {
       setVerifying(false);
@@ -79,17 +91,34 @@ export default function PaymentScreen({ route, navigation }: any) {
     }
   };
 
+  /** Shared return handler — used by deep-link interception AND WebView postMessage bridge. */
+  const handleCallback = (p: Record<string, string>): boolean => {
+    const ids: string[] = Array.isArray((p as any).orderIds) && (p as any).orderIds.length
+      ? (p as any).orderIds
+      : typeof p.orderIds === 'string' && p.orderIds
+        ? p.orderIds.split(',').filter(Boolean)
+        : batchIds;
+    if (p.orderId && batchIds.length && !batchIds.includes(p.orderId) && !ids.includes(p.orderId)) return false;
+    if (p.cancelled === '1') {
+      Alert.alert('Payment cancelled', 'No money was charged. You can retry anytime.');
+      navigation.goBack();
+    } else if (p.razorpay_order_id && p.razorpay_payment_id && p.razorpay_signature) {
+      verify(p);
+    }
+    return false; // consumed — never load inside WebView
+  };
+
+  const onBridgeMessage = (e: any) => {
+    try {
+      const p = JSON.parse(e.nativeEvent.data);
+      if (p && typeof p === 'object') handleCallback(p as Record<string, string>);
+    } catch {}
+  };
+
   const handleUrl = (url: string): boolean => {
     if (url.startsWith(CALLBACK_PREFIX)) {
       const p = parseQuery(url);
-      if (p.orderId && p.orderId !== orderId) return false;
-      if (p.cancelled === '1') {
-        Alert.alert('Payment cancelled', 'No money was charged. You can retry anytime.');
-        navigation.goBack();
-      } else if (p.razorpay_order_id && p.razorpay_payment_id && p.razorpay_signature) {
-        verify(p);
-      }
-      return false; // consumed — never load inside WebView
+      return handleCallback(p);
     }
     if (APP_SCHEMES.some((s) => url.startsWith(s))) {
       // Hand off to the UPI/wallet app (Android shows the app chooser)
@@ -101,7 +130,7 @@ export default function PaymentScreen({ route, navigation }: any) {
     return true;
   };
 
-  if (!checkoutUrl || !orderId) {
+  if (!checkoutUrl || !batchIds.length) {
     return <View style={s.center}><Text>Invalid payment session.</Text></View>;
   }
 
@@ -139,6 +168,7 @@ export default function PaymentScreen({ route, navigation }: any) {
           )}
           onShouldStartLoadWithRequest={(req) => handleUrl(req.url)}
           onNavigationStateChange={(nav) => { if (!nav.loading) handleUrl(nav.url); }}
+          onMessage={onBridgeMessage}
           onError={() => setFailed('Could not reach the payment page. Check your connection and retry.')}
           onHttpError={(e) => { if (e.nativeEvent.statusCode >= 500) setFailed('Payment server error. Please retry.'); }}
         />

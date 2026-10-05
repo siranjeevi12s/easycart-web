@@ -41,8 +41,8 @@ export default function Restaurant({ route, navigation }: any) {
               disabled={!item.isAvailable || !restaurant.isOpen}
               onPress={() => {
                 if (!restaurant.isOpen) return Alert.alert('Restaurant closed');
-                addToCart(restaurant._id, item);
-                Alert.alert('Added to cart', `${item.name} ×1`);
+                addToCart(restaurant._id, item, restaurant.name);
+                Alert.alert('Added to cart', `${item.name} ×1 (${restaurant.name})`);
               }}
               style={[s.addBtn, (!item.isAvailable || !restaurant.isOpen) && { opacity: 0.4 }]}>
               <Text style={s.addText}>ADD</Text>

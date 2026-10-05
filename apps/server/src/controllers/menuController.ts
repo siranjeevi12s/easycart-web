@@ -4,7 +4,7 @@ import { MenuItem } from '../models/MenuItem';
 import { Restaurant } from '../models/Restaurant';
 
 export const getMenu = async (req: AuthRequest, res: Response) => {
-  const items = await MenuItem.find({ restaurantId: req.params.restaurantId, isDeleted: false }).sort({ category: 1, name: 1 });
+  const items = await MenuItem.find({ restaurantId: req.params.restaurantId, isDeleted: { $ne: true } }).sort({ category: 1, name: 1 });
   res.json(items);
 };
 

@@ -4,15 +4,17 @@ import { Restaurant } from '../models/Restaurant';
 import { MenuItem } from '../models/MenuItem';
 import { Order } from '../models/Order';
 import { Settlement } from '../models/Settlement';
+import { User } from '../models/User';
 import { env } from '../config/env';
+import { paymentService } from '../services/paymentService';
 
 export const listRestaurants = async (req: AuthRequest, res: Response) => {
   const { search, open } = req.query as any;
-  const filter: any = { isActive: true, isDeleted: false };
+  const filter: any = { isActive: true, isDeleted: { $ne: true } };
   if (search) {
     const searchPattern = new RegExp(String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     const matchingMenuItems = await MenuItem.find({
-      isDeleted: false,
+      isDeleted: { $ne: true },
       isAvailable: true,
       $or: [{ name: searchPattern }, { description: searchPattern }, { category: searchPattern }],
     }).select('restaurantId');
@@ -64,7 +66,7 @@ export const updateRestaurant = async (req: AuthRequest, res: Response) => {
 };
 
 export const myRestaurants = async (req: AuthRequest, res: Response) => {
-  const list = await Restaurant.find({ ownerId: req.user!.id, isDeleted: false });
+  const list = await Restaurant.find({ ownerId: req.user!.id, isDeleted: { $ne: true } });
   res.json(list);
 };
 
@@ -87,8 +89,7 @@ function maskAccount(acc?: string): string | undefined {
   return `****${acc.slice(-4)}`;
 }
 
-async function assertOwner(req: AuthRequest, restaurantId: string) {
-  const r = await Restaurant.findById(restaurantId);
+async function assertOwner(req: AuthRequest, restaurantId: string) {  const r = await Restaurant.findById(restaurantId);
   if (!r || r.isDeleted) throw Object.assign(new Error('Restaurant not found'), { status: 404 });
   if (r.ownerId.toString() !== req.user!.id && req.user!.role !== 'admin')
     throw Object.assign(new Error('Forbidden: not your restaurant'), { status: 403 });
@@ -179,18 +180,70 @@ export const updatePayoutDetails = async (req: AuthRequest, res: Response) => {
     const linked = String(razorpayLinkedAccountId || '').trim();
     if (linked && !/^acc_[A-Za-z0-9]+$/.test(linked))
       return res.status(400).json({ message: 'Linked account must look like acc_XXXX (from Razorpay Route dashboard)' });
-    r.razorpayLinkedAccountId = linked || undefined;
-    r.routeOnboarded = !!linked;
+    (r as any).razorpayLinkedAccountId = linked || undefined;
+    (r as any).routeOnboarded = !!linked;
+    if (linked) {
+      (r as any).payoutEnabled = true;
+      (r as any).payoutVerified = true;
+      (r as any).payoutUpdatedAt = new Date();
+    }
   }
   await r.save();
   res.json({
     message: mode === 'UPI'
       ? `Payouts enabled — order amounts will settle to UPI ${r.payoutUpiId}`
-      : `Payouts enabled — order amounts will settle to ${r.payoutBankName} ****${r.payoutAccountNumber!.slice(-4)}`,
+      : `Payouts enabled — order amounts will settle to ${r.payoutBankName} ****${(r.payoutAccountNumber || '').slice(-4)}`,
     payoutEnabled: true,
     payoutMode: r.payoutMode,
-    routeOnboarded: r.routeOnboarded,
+    routeOnboarded: (r as any).routeOnboarded,
   });
+};
+
+/** POST /restaurants/:id/route-account — create a Razorpay Route linked account
+ *  for the seller from their payout details (test mode accepts test KYC).
+ *  After this, every Razorpay payment auto-splits their share on capture. */
+export const createRouteAccount = async (req: AuthRequest, res: Response) => {
+  const r = await assertOwner(req, req.params.id as string);
+  if (!(r as any).payoutEnabled)
+    return res.status(400).json({ message: 'Configure payout details first (UPI or bank)' });
+  if ((r as any).razorpayLinkedAccountId) {
+    return res.json({ message: 'Route account already linked', linkedAccountId: (r as any).razorpayLinkedAccountId });
+  }
+  // PAN mandatory for linked accounts; test PAN accepted in test mode
+  const pan = String(req.body?.pan || '').trim().toUpperCase();
+  if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan))
+    return res.status(400).json({ message: 'Valid PAN required for Route KYC' });
+  const owner = await User.findById((r as any).ownerId).select('name email phone');
+  const phone = String(owner?.phone || (r as any).phone || '').replace(/\D/g, '').slice(-10);
+  if (phone.length < 10) return res.status(400).json({ message: 'A 10-digit owner/phone number is required for Route KYC' });
+  const hasBank = !!((r as any).payoutAccountNumber && (r as any).payoutIfsc);
+  try {
+    const acc: any = await paymentService.createLinkedAccount({
+      email: owner?.email || `seller_${(r._id as any).toString()}@easycart.local`,
+      phone,
+      legalBusinessName: String((r as any).name).slice(0, 100),
+      contactName: String(owner?.name || (r as any).name).slice(0, 100),
+      pan,
+      accountNumber: hasBank ? (r as any).payoutAccountNumber : undefined,
+      ifsc: hasBank ? (r as any).payoutIfsc : undefined,
+    });
+    const linkedId = acc?.id;
+    if (!linkedId || !String(linkedId).startsWith('acc_'))
+      return res.status(502).json({ message: 'Razorpay did not return a linked account id', raw: acc });
+    (r as any).razorpayLinkedAccountId = linkedId;
+    (r as any).routeOnboarded = true;
+    (r as any).payoutEnabled = true;
+    (r as any).payoutVerified = true;
+    (r as any).payoutUpdatedAt = new Date();
+    await r.save();
+    res.status(201).json({
+      message: `Route account ${linkedId} linked — payments now auto-split to ${(r as any).name}`,
+      linkedAccountId: linkedId,
+      status: acc?.status,
+    });
+  } catch (e: any) {
+    res.status(e.status || 502).json({ message: e.message || 'Route onboarding failed' });
+  }
 };
 
 /** GET /restaurants/:id/payment-info — public, shown at customer checkout */

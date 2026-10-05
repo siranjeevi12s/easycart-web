@@ -68,7 +68,7 @@ const hmac = (msg, secret) => crypto.createHmac('sha256', secret).update(msg).di
   console.log('[3] order + split');
   r = await api('POST', '/api/orders', custToken, { restaurantId: restId, items: [{ menuItemId: itemId, quantity: 1 }] });
   ok('order created', r.status === 201, `status=${r.status}`);
-  const order = r.json;
+  const order = r.json?.orders?.[0] || r.json;
   ok('backend totals', order?.subtotal === 475 && order?.tax === 24 && order?.totalAmount === 499, `sub=${order?.subtotal} tax=${order?.tax} total=${order?.totalAmount}`);
   ok('split stored (0% fee)', order?.platformFee === 0 && order?.restaurantAmount === 499, `fee=${order?.platformFee} rest=${order?.restaurantAmount}`);
 
@@ -102,12 +102,12 @@ const hmac = (msg, secret) => crypto.createHmac('sha256', secret).update(msg).di
   r = await api('POST', '/api/payments/verify', custToken, { orderId: order._id, razorpay_order_id: intent.razorpayOrderId, razorpay_payment_id: payId, razorpay_signature: sig });
   ok('duplicate verify idempotent', r.status === 200 && /Already/.test(r.json?.message || ''), r.json?.message);
   r = await api('POST', '/api/payments/create', custToken, { orderId: order._id });
-  ok('no new intent after paid', r.status === 200 && /Already paid/.test(r.json?.message || ''), r.json?.message);
+  ok('no new intent after paid', r.status === 400 && r.json?.code === 'ALREADY_PAID', `${r.status} ${r.json?.message}`);
 
   // 7. Bad signature -> FAILED (order stays retryable)
   console.log('[7] failure path');
   r = await api('POST', '/api/orders', custToken, { restaurantId: restId, items: [{ menuItemId: itemId, quantity: 1 }] });
-  const order2 = r.json;
+  const order2 = r.json?.orders?.[0] || r.json;
   r = await api('POST', '/api/payments/create', custToken, { orderId: order2._id });
   const intent2 = r.json;
   r = await api('POST', '/api/payments/verify', custToken, { orderId: order2._id, razorpay_order_id: intent2.razorpayOrderId, razorpay_payment_id: `pay_bad_${tag}`, razorpay_signature: 'tampered' });
@@ -120,7 +120,7 @@ const hmac = (msg, secret) => crypto.createHmac('sha256', secret).update(msg).di
   // 8. Cancel unpaid order
   console.log('[8] cancel unpaid');
   r = await api('POST', '/api/orders', custToken, { restaurantId: restId, items: [{ menuItemId: itemId, quantity: 1 }] });
-  const order3 = r.json;
+  const order3 = r.json?.orders?.[0] || r.json;
   r = await api('POST', '/api/payments/cancel', custToken, { orderId: order3._id });
   ok('unpaid order cancelled', r.status === 200 && r.json?.order?.paymentStatus === 'CANCELLED', r.json?.order?.paymentStatus);
   r = await api('POST', '/api/payments/cancel', custToken, { orderId: order._id });
@@ -129,7 +129,7 @@ const hmac = (msg, secret) => crypto.createHmac('sha256', secret).update(msg).di
   // 9. Webhook: signed payment.captured confirms a fresh order (no verify call)
   console.log('[9] webhook captured');
   r = await api('POST', '/api/orders', custToken, { restaurantId: restId, items: [{ menuItemId: itemId, quantity: 1 }] });
-  const order4 = r.json;
+  const order4 = r.json?.orders?.[0] || r.json;
   r = await api('POST', '/api/payments/create', custToken, { orderId: order4._id });
   const intent4 = r.json;
   const wpay = `pay_wh_${tag}`;
@@ -146,7 +146,7 @@ const hmac = (msg, secret) => crypto.createHmac('sha256', secret).update(msg).di
   r = await fetch(`${BASE}/api/payments/webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-razorpay-signature': 'forged' }, body: whBody }).then(async (res) => ({ status: res.status }));
   ok('forged webhook rejected', r.status === 400, `status=${r.status}`);
   r = await api('POST', '/api/orders', custToken, { restaurantId: restId, items: [{ menuItemId: itemId, quantity: 1 }] });
-  const order5 = r.json;
+  const order5 = r.json?.orders?.[0] || r.json;
   r = await api('POST', '/api/payments/create', custToken, { orderId: order5._id });
   const intent5 = r.json;
   const failBody = JSON.stringify({ event: 'payment.failed', payload: { payment: { entity: { id: `pay_fail_${tag}`, order_id: intent5.razorpayOrderId, error_reason: 'payment_failed', error_description: 'Insufficient funds (test)' } } } });

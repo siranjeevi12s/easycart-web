@@ -14,7 +14,22 @@ import { notFound, errorHandler } from './middleware/error';
 
 const app = express();
 
-app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+  // Our hosted checkout pages run inline scripts + load the Razorpay SDK
+  // and bank/3DS frames. Helmet's default script-src 'self' would
+  // silently kill them (dead Pay button, no error on screen).
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      'script-src': ["'self'", "'unsafe-inline'", 'https://checkout.razorpay.com'],
+      'connect-src': ["'self'", 'https://checkout.razorpay.com', 'https://api.razorpay.com'],
+      'frame-src': ["'self'", 'https://checkout.razorpay.com', 'https://api.razorpay.com'],
+      'form-action': ["'self'", 'https://checkout.razorpay.com'],
+      'img-src': ["'self'", 'data:', 'https:'],
+    },
+  },
+}));
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
@@ -23,7 +38,7 @@ app.use(cors({
   },
   credentials: true
 }));
-// Razorpay signs the RAW webhook bytes — capture them before express.json().
+// Webhook HMACs are computed over RAW bytes — capture before express.json().
 // body-parser skips already-parsed requests, so later express.json() is unaffected.
 app.use('/api/payments/webhook', express.raw({ type: 'application/json', limit: '1mb' }));
 app.use(express.json({ limit: '10mb' }));

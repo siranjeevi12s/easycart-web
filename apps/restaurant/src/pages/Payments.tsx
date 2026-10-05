@@ -23,6 +23,8 @@ export default function Payments() {
   const [settlements, setSettlements] = useState<any[]>([]);
   const [settlingId, setSettlingId] = useState<string | null>(null);
   const [linkedAccount, setLinkedAccount] = useState('');
+  const [routeBusy, setRouteBusy] = useState(false);
+  const [pan, setPan] = useState('');
 
   const loadRestaurants = async () => {
     const { data } = await api.get('/restaurants/my');
@@ -70,8 +72,23 @@ export default function Payments() {
     } finally { setSaving(false); }
   };
 
-  const markSettled = async (orderId: string) => {
+  const onboardRoute = async () => {
     if (!selectedId) return;
+    if (!/^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/.test(pan.trim())) {
+      setMsg({ text: 'Enter a valid 10-character PAN for Route KYC first', sev: 'error' });
+      return;
+    }
+    setRouteBusy(true);
+    try {
+      const { data } = await api.post(`/restaurants/${selectedId}/route-account`, { pan: pan.trim().toUpperCase() });
+      setMsg({ text: data.message, sev: 'success' });
+      loadPayout(selectedId);
+    } catch (e: any) {
+      setMsg({ text: e.response?.data?.message || 'Route onboarding failed', sev: 'error' });
+    } finally { setRouteBusy(false); }
+  };
+
+  const markSettled = async (orderId: string) => {    if (!selectedId) return;
     setSettlingId(orderId);
     try {
       await api.patch(`/restaurants/${selectedId}/settlements/${orderId}`, { settlementRef: `UPI-${Date.now()}` });
@@ -184,6 +201,29 @@ export default function Payments() {
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
             By saving you confirm this account belongs to the restaurant owner. In production this triggers penny-drop verification via Razorpay Route/X.
           </Typography>
+
+          <Divider sx={{ my: 2 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+            <Typography fontWeight={700}>Razorpay Route account</Typography>
+            {payout?.razorpayLinkedAccountId
+              ? <Chip size="small" label={`Linked • ${payout.razorpayLinkedAccountId}`} color="success" />
+              : <Chip size="small" label="Not linked" color="warning" />}
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            One-time onboarding with your payout details above (PAN required for KYC). After this, every Razorpay payment auto-splits their share on capture — no manual settlement.
+          </Typography>
+          <TextField
+            label="PAN (for Route KYC) *"
+            value={pan}
+            onChange={(e) => setPan(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
+            placeholder="ABCDE1234F"
+            helperText="Required by Razorpay to verify the seller. Must match the payout account holder."
+            fullWidth
+            sx={{ mb: 1 }}
+          />
+          <Button variant="contained" onClick={onboardRoute} disabled={routeBusy || !payout?.payoutEnabled} sx={{ bgcolor: '#7C3AED', minHeight: 44 }}>
+            {routeBusy ? <CircularProgress size={20} color="inherit" /> : payout?.razorpayLinkedAccountId ? 'Route account linked ✓' : 'Create Razorpay Route account'}
+          </Button>
         </CardContent>
       </Card>
 

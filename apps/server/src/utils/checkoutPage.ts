@@ -18,6 +18,8 @@ export interface CheckoutPageParams {
   customerEmail?: string;
   customerPhone?: string;
   appOrderId: string;
+  // Multi-seller batch: every sibling order covered by this one payment
+  batchOrderIds?: string[];
 }
 
 const esc = (s: string) =>
@@ -54,10 +56,15 @@ export function renderCheckoutPage(p: CheckoutPageParams): string {
 <script>
 (function () {
   var appOrderId = ${JSON.stringify(p.appOrderId)};
+  var batchOrderIds = ${JSON.stringify(p.batchOrderIds || [p.appOrderId])};
   var scheme = ${JSON.stringify(scheme)};
   function backToApp(params) {
+    // Always attach the full batch so one payment verifies every sibling order
+    params.orderIds = batchOrderIds;
     var q = Object.keys(params).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k] || ''); }).join('&');
-    window.location.href = scheme + '://payment-callback?' + q;
+    var deep = scheme + '://payment-callback?' + q;
+    if (window.ReactNativeWebView) { window.ReactNativeWebView.postMessage(JSON.stringify(params)); return; }
+    window.location.href = deep;
   }
   document.getElementById('cancel').onclick = function () {
     backToApp({ orderId: appOrderId, cancelled: '1' });

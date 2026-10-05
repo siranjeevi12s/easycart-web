@@ -28,7 +28,11 @@ export default function Cart({ navigation }: any) {
         keyExtractor={(i) => i._id}
         renderItem={({ item }) => (
           <View style={s.row}>
-            <View style={{ flex: 1 }}><Text style={{ fontWeight: '600' }}>{item.name}</Text><Text style={{ color: '#666' }}>₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}</Text></View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: '600' }}>{item.name}</Text>
+              {!!item.restaurantName && <Text style={{ color: '#FF6B35', fontSize: 11, fontWeight: '600' }}>{item.restaurantName}</Text>}
+              <Text style={{ color: '#666' }}>₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}</Text>
+            </View>
             <View style={s.qtyBox}>
               <TouchableOpacity onPress={() => changeQty(item._id, -1)} style={s.qBtn}><Text>-</Text></TouchableOpacity>
               <Text style={{ fontWeight: '700', paddingHorizontal: 10 }}>{item.quantity}</Text>

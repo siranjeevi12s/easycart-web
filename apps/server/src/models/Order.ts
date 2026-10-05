@@ -11,6 +11,8 @@ export interface IOrderItem {
 
 export interface IOrder extends Document {
   orderNumber: string;
+  // Multi-seller batch: one Order per restaurant, linked by batchId, paid by ONE gateway payment
+  batchId?: string;
   customerId: mongoose.Types.ObjectId;
   restaurantId: mongoose.Types.ObjectId;
   items: IOrderItem[];
@@ -60,6 +62,7 @@ const OrderItemSchema = new Schema<IOrderItem>(
 const OrderSchema = new Schema<IOrder>(
   {
     orderNumber: { type: String, required: true, unique: true, index: true },
+    batchId: { type: String, index: true },
     customerId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     restaurantId: { type: Schema.Types.ObjectId, ref: 'Restaurant', required: true, index: true },
     items: { type: [OrderItemSchema], required: true },
@@ -89,6 +92,7 @@ const OrderSchema = new Schema<IOrder>(
     settlementRef: { type: String, maxlength: 200 },
     cancellationReason: { type: String, maxlength: 500 },
     notes: { type: String, maxlength: 1000 },
+    isDeleted: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 );

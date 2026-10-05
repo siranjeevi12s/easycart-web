@@ -12,21 +12,31 @@ const isValidId = (id: string) => mongoose.isValidObjectId(id);
 
 export const createOrder = async (req: AuthRequest, res: Response) => {
   const { restaurantId, items, paymentMethod } = req.body;
-  if (!restaurantId || !Array.isArray(items) || items.length === 0)
+  if (!Array.isArray(items) || items.length === 0)
     return res.status(400).json({ message: 'restaurantId and items required' });
-  if (!isValidId(restaurantId)) return res.status(400).json({ message: 'Invalid restaurantId' });
-  for (const it of items) if (!isValidId(it.menuItemId)) return res.status(400).json({ message: 'Invalid menuItemId' });
-  const order = await orderService.createOrder(req.user!.id, restaurantId, items, paymentMethod);
-  res.status(201).json(order);
+  // Legacy single-restaurant shape: { restaurantId, items: [{ menuItemId, quantity }] }
+  // Multi-seller shape: { items: [{ restaurantId, menuItemId, quantity }] }
+  const normalized = items.map((it: any) => ({
+    restaurantId: it.restaurantId || restaurantId,
+    menuItemId: it.menuItemId,
+    quantity: it.quantity,
+  }));
+  if (!restaurantId && normalized.some((i: any) => !i.restaurantId))
+    return res.status(400).json({ message: 'restaurantId and items required' });
+  if (normalized.some((i: any) => !isValidId(i.restaurantId)))
+    return res.status(400).json({ message: 'Invalid restaurantId' });
+  for (const it of normalized) if (!isValidId(it.menuItemId)) return res.status(400).json({ message: 'Invalid menuItemId' });
+  const { batchId, orders } = await orderService.createBatch(req.user!.id, normalized, paymentMethod);
+  res.status(201).json({ batchId, orders });
 };
 
 export const listOrders = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
   const role = req.user!.role;
-  let filter: any = { isDeleted: false };
+  let filter: any = { isDeleted: { $ne: true } };
   if (role === 'customer') filter.customerId = userId;
   else if (role === 'restaurant') {
-    const myRestaurants = await Restaurant.find({ ownerId: userId, isDeleted: false }).select('_id');
+    const myRestaurants = await Restaurant.find({ ownerId: userId, isDeleted: { $ne: true } }).select('_id');
     const ids = myRestaurants.map((r) => r._id);
     filter.restaurantId = { $in: ids };
   }

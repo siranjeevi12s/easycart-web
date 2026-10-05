@@ -83,17 +83,18 @@ function InnerApp() {
     return () => { socket?.disconnect(); };
   }, [user]);
 
-  const addToCart = (restaurantId: string, item: any) => {
+  // Multi-seller cart: items from different restaurants coexist, stamped
+  // with their restaurant. Checkout splits them into one order per seller.
+  const addToCart = (restaurantId: string, item: any, restaurantName?: string) => {
     setCart((prev) => {
-      if (prev.restaurantId && prev.restaurantId !== restaurantId) {
-        // different restaurant → replace
-        return { restaurantId, items: [{ ...item, quantity: 1 }] };
-      }
-      const existing = prev.items.find((i) => i._id === item._id);
+      const existing = prev.items.find((i: any) => i._id === item._id);
       if (existing) {
-        return { ...prev, restaurantId, items: prev.items.map((i) => (i._id === item._id ? { ...i, quantity: i.quantity + 1 } : i)) };
+        return { ...prev, restaurantId: prev.restaurantId || restaurantId, items: prev.items.map((i: any) => (i._id === item._id ? { ...i, quantity: i.quantity + 1 } : i)) };
       }
-      return { restaurantId, items: [...prev.items, { ...item, quantity: 1 }] };
+      return {
+        restaurantId: prev.restaurantId || restaurantId,
+        items: [...prev.items, { ...item, quantity: 1, restaurantId, restaurantName: restaurantName || item.restaurantName }],
+      };
     });
   };
   const clearCart = () => setCart({ restaurantId: null, items: [] });

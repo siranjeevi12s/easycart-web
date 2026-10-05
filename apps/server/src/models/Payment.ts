@@ -16,9 +16,12 @@ export type PaymentRecordStatus =
 
 export interface IPayment extends Document {
   orderId: mongoose.Types.ObjectId;
+  // Multi-seller batch: every sibling order covered by this one gateway payment
+  orderIds: mongoose.Types.ObjectId[];
+  batchId?: string;
   restaurantId: mongoose.Types.ObjectId;
   customerId: mongoose.Types.ObjectId;
-  razorpayOrderId: string;
+  razorpayOrderId?: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
   amount: number; // ₹ total charged
@@ -38,9 +41,11 @@ export interface IPayment extends Document {
 const PaymentSchema = new Schema<IPayment>(
   {
     orderId: { type: Schema.Types.ObjectId, ref: 'Order', required: true, index: true },
+    orderIds: { type: [Schema.Types.ObjectId], ref: 'Order', default: [] },
+    batchId: { type: String, index: true },
     restaurantId: { type: Schema.Types.ObjectId, ref: 'Restaurant', required: true, index: true },
     customerId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    razorpayOrderId: { type: String, required: true, unique: true, index: true },
+    razorpayOrderId: { type: String, sparse: true, unique: true, index: true },
     razorpayPaymentId: { type: String, sparse: true, unique: true },
     razorpaySignature: { type: String },
     amount: { type: Number, required: true, min: 0 },
