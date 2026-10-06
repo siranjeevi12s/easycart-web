@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Grid, Card, CardContent, Typography, Box, Chip, Button, Stack, Alert, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, TextField } from '@mui/material';
-import { Link } from 'react-router-dom';
-import { api, SOCKET_URL } from '../services/api';
+import { api } from '../services/api';
 import { io } from 'socket.io-client';
 
 const canCancel = (status: string) => status === 'PAID' || status === 'ACCEPTED';
@@ -13,7 +12,6 @@ export default function Dashboard() {
   const [cancelTarget, setCancelTarget] = useState<any | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [pickupCode, setPickupCode] = useState<Record<string, string>>({});
-  const [payoutMissing, setPayoutMissing] = useState<string[]>([]);
   const [snack, setSnack] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({ open: false, msg: '', sev: 'success' });
 
   const fetch = async () => {
@@ -30,11 +28,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetch();
+    const SOCKET_URL = (import.meta as any).env?.VITE_SOCKET_URL || 'http://localhost:5000';
     const socket = io(SOCKET_URL, { auth: { token: localStorage.getItem('token') } });
-    // join restaurant room after fetching my restaurants + check payout setup
+    // join restaurant room after fetching my restaurants
     api.get('/restaurants/my').then(({ data }) => {
       data.forEach((r: any) => socket.emit('join:restaurant', r._id));
-      setPayoutMissing(data.filter((r: any) => !r.payoutEnabled).map((r: any) => r.name));
     });
     socket.on('order:new', (order: any) => {
       fetch();
@@ -96,12 +94,7 @@ export default function Dashboard() {
   return (
     <Box>
       <Typography variant="h5" fontWeight={700} gutterBottom>Good evening, Chef 👋</Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>Orders before they arrive — prepare, mark READY, instant pickup.</Typography>
-      {payoutMissing.length > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }} action={<Button component={Link} to="/payments" size="small" variant="contained" sx={{ bgcolor: '#FF6B35', whiteSpace: 'nowrap' }}>Setup payouts</Button>}>
-          <b>{payoutMissing.join(', ')}</b> cannot receive orders yet — add your UPI / bank details to receive order amounts. Customers can't pay until this is done.
-        </Alert>
-      )}
+      <Typography color="text.secondary" sx={{ mb: 3 }}>Orders before they arrive — prepare, mark READY, instant pickup.</Typography>
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} md={4}>
@@ -138,8 +131,8 @@ export default function Dashboard() {
                   {o.orderStatus === 'PREPARING' && <Button variant="contained" onClick={() => act(o._id, 'READY')} color="success" sx={{ minHeight: 40 }}>Mark READY 🔔 Notify</Button>}
                   {o.orderStatus === 'READY' && (
                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', width: '100%', bgcolor: 'white', p: 1.2, borderRadius: 2, border: '1px solid #E5E7EB', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-                      <TextField size="small" placeholder="Enter #FD-xxxx or scan QR" value={pickupCode[o._id] || ''} onChange={(e) => setPickupCode({ ...pickupCode, [o._id]: e.target.value })} inputProps={{ style: { color: '#1A1A1A' } }} sx={{ flex: 1, minWidth: 160, '& .MuiOutlinedInput-root': { bgcolor: 'white', borderRadius: 1.5, '& fieldset': { borderColor: '#E5E7EB' }, '&:hover fieldset': { borderColor: '#FF6B35' } }, '& .MuiInputBase-input': { color: '#1A1A1A', '&::placeholder': { color: '#6B7280', opacity: 1 } } }} />
-                      <Button variant="contained" color="success" onClick={() => handlePickup(o._id)} sx={{ minHeight: 40, whiteSpace: 'nowrap', px: 2.5, fontWeight: 700, boxShadow: 'none', color: 'white' }}>Verify & Picked Up</Button>
+                      <TextField size="small" placeholder="Enter #FD-xxxx or scan QR" value={pickupCode[o._id] || ''} onChange={(e) => setPickupCode({ ...pickupCode, [o._id]: e.target.value })} sx={{ flex: 1, minWidth: 160, '& .MuiOutlinedInput-root': { bgcolor: 'white', borderRadius: 1.5 } }} />
+                      <Button variant="contained" color="success" onClick={() => handlePickup(o._id)} sx={{ minHeight: 40, whiteSpace: 'nowrap', px: 2.5, fontWeight: 700, boxShadow: 'none' }}>Verify & Picked Up</Button>
                     </Box>
                   )}
                   {canCancel(o.orderStatus) && (
