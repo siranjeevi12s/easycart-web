@@ -9,15 +9,16 @@ import { AppText } from '../components/AppText';
 import { AppButton } from '../components/AppButton';
 import { AppCard } from '../components/AppCard';
 import { EmptyState } from '../components/EmptyState';
+import { QtyStepper } from '../components/QtyStepper';
 
 export default function Checkout({ navigation }: any) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { cart, clearCart } = useContext(CartContext);
+  const { cart, clearCart, setCart } = useContext(CartContext);
   const [loading, setLoading] = useState(false);
   const [payees, setPayees] = useState<any[]>([]);
   const subtotal = cart.items.reduce((s: number, i: any) => s + i.price * i.quantity, 0);
-  const tax = Math.round(subtotal * 0.05);
+  const tax = Math.round(subtotal * 0.02);
   const total = subtotal + tax;
 
   // Group cart lines per restaurant (multi-seller batch: A ₹400 + B ₹350 + C ₹150 ...)
@@ -50,6 +51,16 @@ export default function Checkout({ navigation }: any) {
     })();
     return () => { live = false; };
   }, [cart, groups]);
+
+  // Same quantity editing as the Cart screen — dropping to 0 removes the line,
+  // and an emptied cart falls back to the empty state below.
+  const changeQty = (id: string, delta: number) => {
+    setCart((prev: any) => {
+      const items = prev.items.map((i: any) => i._id === id ? { ...i, quantity: i.quantity + delta } : i).filter((i: any) => i.quantity > 0);
+      if (items.length === 0) return { restaurantId: null, items: [] };
+      return { ...prev, items };
+    });
+  };
 
   const pay = async () => {
     if (!groups.length) return Alert.alert('Cart is empty');
@@ -129,9 +140,12 @@ export default function Checkout({ navigation }: any) {
               {g.restaurantName}
             </AppText>
             {g.items.map((i: any) => (
-              <AppText key={i._id} variant="body" style={{ paddingVertical: 2 }}>
-                {i.name} × {i.quantity} = ₹{i.price * i.quantity}
-              </AppText>
+              <View key={i._id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4, gap: 8 }}>
+                <AppText variant="body" style={{ flex: 1 }}>
+                  {i.name} × {i.quantity} = ₹{i.price * i.quantity}
+                </AppText>
+                <QtyStepper small quantity={i.quantity} onChange={(d) => changeQty(i._id, d)} />
+              </View>
             ))}
             <AppText variant="body" tone="muted" style={{ marginTop: 4 }}>
               Subtotal ({g.restaurantName}): ₹{g.subtotal}
@@ -140,7 +154,7 @@ export default function Checkout({ navigation }: any) {
         ))}
         <AppCard>
           <SummaryRow label="Subtotal" value={`₹${subtotal}`} />
-          <SummaryRow label="Tax 5%" value={`₹${tax}`} />
+          <SummaryRow label="Tax 2%" value={`₹${tax}`} />
           <Divider style={{ marginVertical: 8 }} />
           <SummaryRow label="Total (one payment)" value={`₹${total}`} bold accent />
           <AppText variant="caption" tone="muted" style={{ marginTop: 8 }}>

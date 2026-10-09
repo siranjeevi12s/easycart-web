@@ -14,7 +14,7 @@ export default function Cart({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { cart, setCart, clearCart } = useContext(CartContext);
   const subtotal = cart.items.reduce((s: number, i: any) => s + i.price * i.quantity, 0);
-  const tax = Math.round(subtotal * 0.05);
+  const tax = Math.round(subtotal * 0.02);
   const total = subtotal + tax;
 
   const changeQty = (id: string, delta: number) => {
@@ -66,7 +66,7 @@ export default function Cart({ navigation }: any) {
       />
       <AppCard>
         <SummaryRow label="Subtotal" value={`₹${subtotal}`} />
-        <SummaryRow label="Tax (5%)" value={`₹${tax}`} />
+        <SummaryRow label="Tax (2%)" value={`₹${tax}`} />
         <Divider style={{ marginVertical: 8 }} />
         <SummaryRow label="Total (backend authoritative)" value={`₹${total}`} bold accent />
         <AppButton title="Proceed to Payment →" onPress={() => navigation.navigate('Checkout')} style={{ marginTop: 12 }} />

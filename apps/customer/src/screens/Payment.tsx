@@ -1,7 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { View, Alert, Linking } from 'react-native';
-import { ActivityIndicator, Appbar, useTheme } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, useTheme } from 'react-native-paper';
 import { WebView } from 'react-native-webview';
 import { api } from '../services/api';
 import { CartContext } from '../context/AppContext';
@@ -31,7 +30,6 @@ export default function PaymentScreen({ route, navigation }: any) {
   const batchIds: string[] = Array.isArray(routeOrderIds) && routeOrderIds.length
     ? routeOrderIds
     : orderId ? [orderId] : [];
-  const insets = useSafeAreaInsets();
   const { clearCart } = useContext(CartContext);
   const [verifying, setVerifying] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
@@ -144,12 +142,7 @@ export default function PaymentScreen({ route, navigation }: any) {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <Appbar.Header elevated={false} style={{ backgroundColor: theme.colors.primaryContainer }}>
-        <AppText variant="captionBold" tone="primary" style={{ textAlign: 'center', flex: 1 }}>
-          Secured by Razorpay • UPI • Cards • Netbanking
-        </AppText>
-      </Appbar.Header>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {(verifying) && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.9)', zIndex: 10 }}>
           <ActivityIndicator size="large" color={theme.colors.primary} />

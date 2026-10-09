@@ -1,7 +1,6 @@
 import { useState, useContext } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '../services/api';
+import { api, saveSession } from '../services/api';
 import { AuthContext } from '../context/AppContext';
 import { Screen } from '../components/Screen';
 import { AppText } from '../components/AppText';
@@ -19,8 +18,7 @@ export default function Register({ navigation }: any) {
     setBusy(true);
     try {
       const { data } = await api.post('/auth/register', { ...form, role: 'customer' });
-      await AsyncStorage.setItem('token', data.token);
-      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      await saveSession(data.token, data.refreshToken, data.user);
       setUser(data.user);
     } catch (e: any) {
       Alert.alert('Failed', e.response?.data?.message || 'Error');

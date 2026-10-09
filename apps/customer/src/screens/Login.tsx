@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from 'react-native-paper';
-import { api } from '../services/api';
+import { api, saveSession } from '../services/api';
 import { AuthContext } from '../context/AppContext';
 import { useContext } from 'react';
 import { Screen } from '../components/Screen';
@@ -23,8 +22,7 @@ export default function Login({ navigation }: any) {
     setBusy(true);
     try {
       const { data } = await api.post('/auth/login', { email: email.trim(), password });
-      await AsyncStorage.setItem('token', data.token);
-      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      await saveSession(data.token, data.refreshToken, data.user);
       setUser(data.user);
     } catch (e: any) {
       Alert.alert('Login failed', e.response?.data?.message || 'Error');

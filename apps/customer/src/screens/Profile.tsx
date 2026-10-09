@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../context/AppContext';
-import { api } from '../services/api';
+import { api, clearSession, saveSession } from '../services/api';
 import { useAppThemeMode } from '../theme/ThemeContext';
 import { Screen } from '../components/Screen';
 import { AppText } from '../components/AppText';
@@ -90,7 +90,9 @@ export default function Profile({ navigation }: any) {
     if (newPwd.length < 6) return Alert.alert('Validation', 'Min 6 characters');
     setPwdSaving(true);
     try {
-      await api.post('/auth/change-password', { currentPassword: curPwd, newPassword: newPwd });
+      const { data } = await api.post('/auth/change-password', { currentPassword: curPwd, newPassword: newPwd });
+      // Backend rotates the refresh token on password change — keep the new one
+      if (data?.refreshToken) await saveSession((await AsyncStorage.getItem('token')) || '', data.refreshToken);
       Alert.alert('Success', 'Password changed');
       setPwdOpen(false); setCurPwd(''); setNewPwd(''); setConfirmPwd('');
     } catch (e: any) { Alert.alert('Error', e.response?.data?.message || 'Failed'); }
@@ -125,7 +127,7 @@ export default function Profile({ navigation }: any) {
   const logout = () =>
     Alert.alert('Logout', 'You will be signed out.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: async () => { await AsyncStorage.removeItem('token'); await AsyncStorage.removeItem('user'); setUser(null); } },
+      { text: 'Logout', style: 'destructive', onPress: async () => { await clearSession(); setUser(null); } },
     ]);
 
   if (loading && !displayUser) return <LoadingView />;

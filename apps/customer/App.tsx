@@ -7,7 +7,7 @@ import { useTheme, Icon } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { io } from 'socket.io-client';
-import { BASE_URL } from './src/services/api';
+import { BASE_URL, onAuthLost } from './src/services/api';
 import { AppThemeProvider, useNavTheme } from './src/theme/ThemeContext';
 import { AppText } from './src/components/AppText';
 
@@ -72,6 +72,9 @@ function InnerApp() {
       setLoading(false);
     })();
   }, []);
+
+  // Refresh token died (rotated elsewhere / revoked) → drop to login
+  useEffect(() => onAuthLost(() => setUser(null)), []);
 
   // Global real-time notifications for customer: order received by restaurant is server-side, but customer cares about READY
   useEffect(() => {
