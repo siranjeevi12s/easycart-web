@@ -6,6 +6,7 @@ import { Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/User';
 import { Restaurant } from '../models/Restaurant';
+import { MenuItem } from '../models/MenuItem';
 import { Order } from '../models/Order';
 import { Payment } from '../models/Payment';
 import { AuditLog, recordAudit } from '../models/AuditLog';
@@ -98,6 +99,29 @@ router.patch('/restaurants/:id/toggle', asyncHandler(async (req: AuthRequest, re
     const r = await Restaurant.findById(req.params.id).select('name isActive');
     await recordAudit({ adminId: req.user!.id, adminEmail: req.user!.email, action: 'restaurant.toggle', targetType: 'restaurant', targetId: String(req.params.id), meta: { isActive: r?.isActive } });
   }
+}));
+
+/** Hard-delete a restaurant + its menu items. Blocked while live orders exist.
+ *  Past orders/payments/settlements are KEPT (financial history) and will show
+ *  an unknown restaurant. This cannot be undone. */
+router.delete('/restaurants/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
+  const r = await Restaurant.findById(req.params.id);
+  if (!r || (r as any).isDeleted) return res.status(404).json({ message: 'Restaurant not found' });
+  const live = await Order.countDocuments({
+    restaurantId: (r as any)._id,
+    orderStatus: { $in: ['PAID', 'ACCEPTED', 'PREPARING', 'READY'] },
+  });
+  if (live > 0) return res.status(400).json({ message: `Cannot delete — ${live} active order${live === 1 ? '' : 's'} still in kitchen flow` });
+  const snapshot = { name: (r as any).name, ownerId: String((r as any).ownerId), address: (r as any).address };
+  const menuDel = await MenuItem.deleteMany({ restaurantId: (r as any)._id });
+  await Restaurant.deleteOne({ _id: (r as any)._id });
+  await recordAudit({
+    adminId: req.user!.id, adminEmail: req.user!.email, action: 'restaurant.delete',
+    targetType: 'restaurant', targetId: (r as any)._id.toString(),
+    reason: String(req.body?.reason || '').slice(0, 500) || undefined,
+    meta: { ...snapshot, menuItemsRemoved: menuDel.deletedCount },
+  });
+  res.json({ message: `Restaurant ${snapshot.name} permanently deleted (${menuDel.deletedCount} menu items removed, order history kept)` });
 }));
 
 const APPROVALS = ['pending', 'under_review', 'approved', 'rejected', 'suspended'];

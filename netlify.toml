@@ -1,25 +1,7 @@
-# Netlify deploy config for the EasyCart restaurant web app.
-# Site URL: https://easycart-demo-dev.netlify.app
-# In Netlify: Add new site -> Import from GitHub -> easycart-web.
-# Build settings are read from here automatically; only add the ENV VARS below
-# in Site settings -> Environment variables, then Trigger deploy.
-#
-# Required env vars (Site settings -> Environment variables):
-#   VITE_API_URL    = https://<your-render-service>.onrender.com   (no trailing slash, no /api)
-#   VITE_SOCKET_URL = https://<your-render-service>.onrender.com   (same as above)
-[build]
-  base = "apps/restaurant"
-  publish = "dist"
-  command = "npm install && npm run build"
-
-# SPA fallback — React Router handles /orders, /payments, /profile, ...
+# Netlify serves the Vite build; ALL /api traffic proxies to the Azure backend
+# (the portal uses a relative /api baseURL, so without this every data call 404s).
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/api/*"
+  to = "https://easycart-g6end7e0c8hkhwe4.eastasia-01.azurewebsites.net/api/:splat"
   status = 200
-
-# Don’t cache the entry HTML (so new deploys go live immediately); hash-named assets cache long
-[[headers]]
-  for = "/index.html"
-  [headers.values]
-    Cache-Control = "no-cache"
+  force = true
