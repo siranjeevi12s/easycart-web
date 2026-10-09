@@ -41,7 +41,22 @@ export const listOrders = async (req: AuthRequest, res: Response) => {
     filter.restaurantId = { $in: ids };
   }
   if (req.query.status) filter.orderStatus = req.query.status;
-  const orders = await Order.find(filter).sort({ createdAt: -1 }).populate('restaurantId customerId');
+  if (req.query.payment) filter.paymentStatus = req.query.payment;
+  // Safe without extra ownership check: the base filter already restricts to
+  // the caller's own restaurants, so a foreign id simply matches nothing.
+  if (req.query.restaurantId) filter.restaurantId = req.query.restaurantId;
+  if (req.query.search) {
+    const rx = new RegExp(String(req.query.search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    filter.orderNumber = rx;
+  }
+  if (req.query.from || req.query.to) {
+    filter.createdAt = {};
+    if (req.query.from) filter.createdAt.$gte = new Date(req.query.from as string);
+    if (req.query.to) filter.createdAt.$lte = new Date(req.query.to as string);
+  }
+  const sortDir = req.query.sort === 'oldest' ? 1 : -1;
+  const sort: any = req.query.sort === 'amount' ? { totalAmount: -1 } : { createdAt: sortDir };
+  const orders = await Order.find(filter).sort(sort).populate('restaurantId customerId');
   res.json(orders);
 };
 
