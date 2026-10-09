@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react';
 import {
-  Box, Card, CardContent, Typography, TextField, Button, Stack, Alert,
-  MenuItem, Select, FormControl, InputLabel, Chip, Divider, CircularProgress,
-  Table, TableHead, TableRow, TableCell, TableBody, ToggleButtonGroup, ToggleButton,
+  Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Divider, FormControl, InputLabel,
+  MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, ToggleButton, ToggleButtonGroup, Typography,
 } from '@mui/material';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { api } from '../services/api';
+import PageHeader from '../components/PageHeader';
+import StatCard from '../components/StatCard';
+import StatusChip from '../components/StatusChip';
+import EmptyState from '../components/EmptyState';
+import { useSnack } from '../components/useSnack';
+import { brand } from '../theme/tokens';
 
 export default function Payments() {
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<{ text: string; sev: 'success' | 'error' | 'info' } | null>(null);
   const [mode, setMode] = useState<'UPI' | 'BANK'>('UPI');
   const [upiId, setUpiId] = useState('');
   const [holder, setHolder] = useState('');
@@ -25,6 +29,7 @@ export default function Payments() {
   const [linkedAccount, setLinkedAccount] = useState('');
   const [routeBusy, setRouteBusy] = useState(false);
   const [pan, setPan] = useState('');
+  const { show, fail, host } = useSnack();
 
   const loadRestaurants = async () => {
     const { data } = await api.get('/restaurants/my');
@@ -48,7 +53,7 @@ export default function Payments() {
       const s = await api.get(`/restaurants/${id}/settlements`);
       setSettlements(s.data);
     } catch (e: any) {
-      setMsg({ text: e.response?.data?.message || 'Failed to load payout details', sev: 'error' });
+      fail(e, 'Failed to load payout details');
     }
   };
 
@@ -58,68 +63,66 @@ export default function Payments() {
   const save = async () => {
     if (!selectedId) return;
     setSaving(true);
-    setMsg(null);
     try {
       const body = mode === 'UPI'
         ? { payoutMode: 'UPI', payoutUpiId: upiId.trim(), razorpayLinkedAccountId: linkedAccount.trim() }
         : { payoutMode: 'BANK', payoutAccountHolder: holder.trim(), payoutAccountNumber: account.replace(/\s/g, ''), payoutIfsc: ifsc.trim().toUpperCase(), payoutBankName: bankName.trim(), razorpayLinkedAccountId: linkedAccount.trim() };
       const { data } = await api.put(`/restaurants/${selectedId}/payout`, body);
-      setMsg({ text: data.message, sev: 'success' });
+      show(data.message);
       loadPayout(selectedId);
       loadRestaurants();
     } catch (e: any) {
-      setMsg({ text: e.response?.data?.message || 'Save failed — check UPI / IFSC format', sev: 'error' });
+      fail(e, 'Save failed — check UPI / IFSC format');
     } finally { setSaving(false); }
   };
 
   const onboardRoute = async () => {
     if (!selectedId) return;
     if (!/^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/.test(pan.trim())) {
-      setMsg({ text: 'Enter a valid 10-character PAN for Route KYC first', sev: 'error' });
+      show('Enter a valid 10-character PAN for Route KYC first', 'error');
       return;
     }
     setRouteBusy(true);
     try {
       const { data } = await api.post(`/restaurants/${selectedId}/route-account`, { pan: pan.trim().toUpperCase() });
-      setMsg({ text: data.message, sev: 'success' });
+      show(data.message);
       loadPayout(selectedId);
     } catch (e: any) {
-      setMsg({ text: e.response?.data?.message || 'Route onboarding failed', sev: 'error' });
+      fail(e, 'Route onboarding failed');
     } finally { setRouteBusy(false); }
   };
 
-  const markSettled = async (orderId: string) => {    if (!selectedId) return;
+  const markSettled = async (orderId: string) => {
+    if (!selectedId) return;
     setSettlingId(orderId);
     try {
       await api.patch(`/restaurants/${selectedId}/settlements/${orderId}`, { settlementRef: `UPI-${Date.now()}` });
-      setMsg({ text: 'Marked settled — amount transferred to your account', sev: 'success' });
+      show('Marked settled — amount transferred to your account');
       loadPayout(selectedId);
     } catch (e: any) {
-      setMsg({ text: e.response?.data?.message || 'Failed', sev: 'error' });
+      fail(e, 'Failed');
     } finally { setSettlingId(null); }
   };
 
-  if (loading) return <Box sx={{ display: 'grid', placeItems: 'center', py: 10 }}><CircularProgress sx={{ color: '#FF6B35' }} /></Box>;
+  if (loading) return <Box sx={{ display: 'grid', placeItems: 'center', py: 10 }}><CircularProgress color="primary" /></Box>;
 
   if (restaurants.length === 0)
-    return <Alert severity="warning">Create a restaurant profile first (Profile page), then configure payouts here.</Alert>;
+    return <EmptyState severity="warning" message="No restaurant profile yet." hint="Create a restaurant profile first (Profile page), then configure payouts here." />;
 
   const selected = restaurants.find((r) => r._id === selectedId);
 
   return (
-    <Box sx={{ px: { xs: 1, sm: 2 } }}>
-      <Typography variant="h5" fontWeight={700}>Payments & Payouts</Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Collect your payment details once — every order amount settles here. Razorpay collects from customer → transfers to your account below.
-      </Typography>
-
-      {msg && <Alert severity={msg.sev} sx={{ mb: 2 }} onClose={() => setMsg(null)}>{msg.text}</Alert>}
+    <Box>
+      <PageHeader
+        title="Payments & Payouts"
+        sub="Collect your payment details once — every order amount settles here. Razorpay collects from customer → transfers to your account below."
+      />
 
       <FormControl fullWidth sx={{ mb: 2 }}>
         <InputLabel>Restaurant</InputLabel>
         <Select value={selectedId} label="Restaurant" onChange={(e) => setSelectedId(e.target.value)}>
           {restaurants.map((r) => (
-            <MenuItem key={r._id} value={r._id}>{r.name} — {r.payoutEnabled ? '✅ Payouts on' : '⚠️ Payouts off'}</MenuItem>
+            <MenuItem key={r._id} value={r._id}>{r.name} — {r.payoutEnabled ? 'Payouts on' : 'Payouts off'}</MenuItem>
           ))}
         </Select>
       </FormControl>
@@ -132,41 +135,29 @@ export default function Payments() {
       {payout?.payoutEnabled && (
         <Alert severity="success" sx={{ mb: 2 }}>
           Payouts active — {payout.payoutMode === 'UPI' ? `settling to UPI ${payout.payoutUpiId}` : `settling to ${payout.payoutBankName} ****${(payout.payoutAccountNumber || '').slice(-4)}`}
-          {payout.settlementMode === 'ROUTE_AUTO' ? ' • ⚡ Razorpay Route auto-split ON' : ' • Settlement queued (platform settles to the above account)'}
+          {payout.settlementMode === 'ROUTE_AUTO' ? ' • Razorpay Route auto-split ON' : ' • Settlement queued (platform settles to the above account)'}
         </Alert>
       )}
 
       {/* Earnings */}
       {payout?.earnings && (
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
-          <Card sx={{ flex: 1, bgcolor: '#FF6B35', color: 'white' }}><CardContent>
-            <Typography variant="h4" fontWeight={800}>₹{payout.earnings.totalReceived}</Typography>
-            <Typography>Total received ({payout.earnings.paidOrders} paid orders)</Typography>
-          </CardContent></Card>
-          <Card sx={{ flex: 1 }}><CardContent>
-            <Typography variant="h4" fontWeight={800}>₹{payout.earnings.pendingSettlement}</Typography>
-            <Typography color="text.secondary">Pending settlement ({payout.earnings.pendingCount})</Typography>
-          </CardContent></Card>
-          <Card sx={{ flex: 1 }}><CardContent>
-            <Typography variant="h4" fontWeight={800}>₹{payout.earnings.settled}</Typography>
-            <Typography color="text.secondary">Settled ({payout.earnings.settledCount})</Typography>
-          </CardContent></Card>
-          <Card sx={{ flex: 1 }}><CardContent>
-            <Typography variant="h4" fontWeight={800}>₹{payout.earnings.platformFees ?? 0}</Typography>
-            <Typography color="text.secondary">EasyCart fee ({payout.platformFeePercent ?? 0}%)</Typography>
-          </CardContent></Card>
+          <Box sx={{ flex: 1 }}><StatCard highlight value={`₹${payout.earnings.totalReceived}`} label={`Total received (${payout.earnings.paidOrders} paid orders)`} /></Box>
+          <Box sx={{ flex: 1 }}><StatCard value={`₹${payout.earnings.pendingSettlement}`} label={`Pending settlement (${payout.earnings.pendingCount})`} /></Box>
+          <Box sx={{ flex: 1 }}><StatCard value={`₹${payout.earnings.settled}`} label={`Settled (${payout.earnings.settledCount})`} /></Box>
+          <Box sx={{ flex: 1 }}><StatCard value={`₹${payout.earnings.platformFees ?? 0}`} label={`EasyCart fee (${payout.platformFeePercent ?? 0}%)`} /></Box>
         </Stack>
       )}
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <AccountBalanceIcon sx={{ color: '#FF6B35' }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+            <AccountBalanceIcon sx={{ color: brand.primary }} />
             <Typography fontWeight={700}>Where should order money go?</Typography>
-            {payout && <Chip size="small" label={payout.payoutEnabled ? 'Enabled' : 'Not configured'} color={payout.payoutEnabled ? 'success' : 'warning'} sx={{ ml: 1 }} />}
+            {payout && <StatusChip status={payout.payoutEnabled ? 'Enabled' : 'Not configured'} kind={payout.payoutEnabled ? 'success' : 'warning'} />}
           </Box>
 
-          <ToggleButtonGroup value={mode} exclusive onChange={(_, v) => v && setMode(v)} sx={{ mb: 2 }}>
+          <ToggleButtonGroup value={mode} exclusive onChange={(_, v) => v && setMode(v)} sx={{ mb: 2 }} aria-label="payout mode">
             <ToggleButton value="UPI" sx={{ px: 3, minHeight: 44 }}>UPI (instant)</ToggleButton>
             <ToggleButton value="BANK" sx={{ px: 3, minHeight: 44 }}>Bank account</ToggleButton>
           </ToggleButtonGroup>
@@ -186,7 +177,7 @@ export default function Payments() {
             </Stack>
           )}
 
-          <Button variant="contained" onClick={save} disabled={saving} sx={{ mt: 2, bgcolor: '#FF6B35', minHeight: 48 }} fullWidth>
+          <Button variant="contained" onClick={save} disabled={saving} sx={{ mt: 2, bgcolor: brand.primary, '&:hover': { bgcolor: brand.primaryDark }, minHeight: 48 }} fullWidth>
             {saving ? <CircularProgress size={22} color="inherit" /> : payout?.payoutEnabled ? 'Update payment details' : 'Save & enable payouts'}
           </Button>
           <TextField
@@ -238,19 +229,19 @@ export default function Payments() {
               const status = o.settlementStatus || o.payoutStatus;
               const settled = status === 'SETTLED';
               return (
-              <TableRow key={o._id}>
-                <TableCell>{o.orderNumber}</TableCell>
-                <TableCell>₹{o.totalAmount}</TableCell>
-                <TableCell>₹{o.restaurantAmount ?? o.totalAmount}</TableCell>
-                <TableCell>₹{o.platformFee ?? 0}</TableCell>
-                <TableCell>{new Date(o.createdAt).toLocaleDateString()}</TableCell>
-                <TableCell><Chip size="small" label={status} color={settled ? 'success' : status === 'REVERSED' ? 'error' : status === 'FAILED' ? 'error' : 'warning'} /></TableCell>
-                <TableCell>
-                  {!settled && status !== 'REVERSED'
-                    ? <Button size="small" variant="outlined" disabled={settlingId === o._id} onClick={() => markSettled(o._id)} sx={{ borderColor: '#22c55e', color: '#16a34a' }}>{settlingId === o._id ? '…' : 'Mark settled'}</Button>
-                    : <Typography variant="caption" color="text.secondary">{o.transferId || o.settlementRef || ''}</Typography>}
-                </TableCell>
-              </TableRow>
+                <TableRow key={o._id}>
+                  <TableCell>{o.orderNumber}</TableCell>
+                  <TableCell>₹{o.totalAmount}</TableCell>
+                  <TableCell>₹{o.restaurantAmount ?? o.totalAmount}</TableCell>
+                  <TableCell>₹{o.platformFee ?? 0}</TableCell>
+                  <TableCell>{new Date(o.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell><StatusChip status={status} kind={settled ? 'success' : status === 'REVERSED' || status === 'FAILED' ? 'error' : 'warning'} /></TableCell>
+                  <TableCell>
+                    {!settled && status !== 'REVERSED'
+                      ? <Button size="small" variant="outlined" disabled={settlingId === o._id} onClick={() => markSettled(o._id)} sx={{ borderColor: '#22c55e', color: '#16a34a' }}>{settlingId === o._id ? '…' : 'Mark settled'}</Button>
+                      : <Typography variant="caption" color="text.secondary">{o.transferId || o.settlementRef || ''}</Typography>}
+                  </TableCell>
+                </TableRow>
               );
             })}
             {settlements.length === 0 && <TableRow><TableCell colSpan={7} align="center"><Typography color="text.secondary" sx={{ py: 2 }}>No paid orders yet — settlements appear here.</Typography></TableCell></TableRow>}
@@ -261,6 +252,7 @@ export default function Payments() {
       <Alert severity="info">
         <b>Real-world flow:</b> 1) Add live Razorpay keys on server (<code>RAZORPAY_KEY_ID=rzp_live_…</code>). 2) Customer pays via Razorpay Checkout. 3) Money hits platform account → auto/manually settled to the UPI/bank above. For instant direct settlement, connect Razorpay Route with linked accounts per restaurant.
       </Alert>
+      {host}
     </Box>
   );
 }

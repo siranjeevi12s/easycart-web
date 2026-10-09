@@ -42,7 +42,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <RestaurantIcon sx={{ color: 'white', fontSize: 20 }} />
             </Box>
             <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, whiteSpace: 'nowrap' }}>EasyCart <Box component="span" sx={{ color: '#FF6B35', display: { xs: 'none', sm: 'inline' } }}>Restaurant</Box></Typography>
-            <Chip label="Pre-Order" size="small" sx={{ ml: 1, bgcolor: '#FFF2EC', color: '#FF6B35', display: { xs: 'none', lg: 'flex' } }} />
+            <Chip label="Pre-Order" size="small" sx={{ ml: 1, bgcolor: mode === 'light' ? '#FFF2EC' : 'rgba(255,107,53,0.15)', color: '#FF6B35', display: { xs: 'none', lg: 'flex' } }} />
           </Box>
           {/* Desktop nav */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
