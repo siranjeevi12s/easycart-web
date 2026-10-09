@@ -584,6 +584,20 @@ export const refundPayment = async (req: AuthRequest, res: Response) => {
     io.to(`restaurant:${order.restaurantId.toString()}`).emit('order:refunded', order);
   } catch {}
 
+  // Admin/owner refunds are audited (actor, amount, reason) — best effort
+  try {
+    const { recordAudit } = await import('../models/AuditLog');
+    await recordAudit({
+      adminId: req.user!.id,
+      adminEmail: req.user!.email,
+      action: req.user!.role === 'admin' ? 'refund.admin' : 'refund.restaurant',
+      targetType: 'order',
+      targetId: order._id.toString(),
+      reason: String(reason || 'refunded').slice(0, 500),
+      meta: { refundId, refundStatus, amount: order.totalAmount, orderNumber: order.orderNumber },
+    });
+  } catch {}
+
   res.json({ message: 'Refund initiated', refundId, refundStatus, order });
 };
 

@@ -53,6 +53,20 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Credential endpoints get their own tight bucket. Only FAILURES count —
+// legitimate users log in once and never trip it; password spraying (all 401/400)
+// burns through 30 attempts per 15min per IP and gets cut off.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: { message: 'Too many auth attempts, please try again in 15 minutes' },
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+
 app.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
 app.use('/api/auth', authRoutes);

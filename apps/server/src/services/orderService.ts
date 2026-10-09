@@ -36,6 +36,8 @@ export const orderService = {
     if (!restaurant) throw Object.assign(new Error('Restaurant not found'), { status: 404 });
     if (restaurant.isDeleted) throw Object.assign(new Error('Restaurant removed'), { status: 404 });
     if (!restaurant.isActive) throw Object.assign(new Error('Restaurant is deactivated'), { status: 400 });
+  if (restaurant.approvalStatus && restaurant.approvalStatus !== 'approved')
+    throw Object.assign(new Error('Restaurant is not approved yet'), { status: 400 });
     if (!restaurant.isOpen) throw Object.assign(new Error('Restaurant is closed'), { status: 400 });
     // Real-world workflow: no payouts configured → can't receive order amounts → block new orders
     if (!restaurant.payoutEnabled)
@@ -63,7 +65,7 @@ export const orderService = {
       });
       subtotal += itemSubtotal;
     }
-    const tax = Math.round(subtotal * 0.05);
+    const tax = Math.round(subtotal * 0.02);
     const totalAmount = subtotal + tax;
     // Backend-authoritative marketplace split (never trust frontend totals)
     const split = computeSplit(totalAmount);

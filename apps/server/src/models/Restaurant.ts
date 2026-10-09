@@ -30,6 +30,13 @@ export interface IRestaurant extends Document {
   // restaurant share on capture. When absent, settlements queue as PENDING.
   razorpayLinkedAccountId?: string;
   routeOnboarded: boolean;
+  // ---- Admin approval workflow ----
+  // New restaurants start 'pending' and are invisible publicly until approved.
+  // Suspended/rejected restaurants stop operating (enforced in list + orders).
+  approvalStatus: 'pending' | 'under_review' | 'approved' | 'rejected' | 'suspended';
+  approvalNote?: string;
+  approvedAt?: Date;
+  approvedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -59,6 +66,10 @@ const RestaurantSchema = new Schema<IRestaurant>(
     payoutUpdatedAt: { type: Date },
     razorpayLinkedAccountId: { type: String, trim: true, maxlength: 50 },
     routeOnboarded: { type: Boolean, default: false },
+    approvalStatus: { type: String, enum: ['pending', 'under_review', 'approved', 'rejected', 'suspended'], default: 'pending', index: true },
+    approvalNote: { type: String, maxlength: 500 },
+    approvedAt: { type: Date },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
 );

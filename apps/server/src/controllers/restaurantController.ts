@@ -10,7 +10,7 @@ import { paymentService } from '../services/paymentService';
 
 export const listRestaurants = async (req: AuthRequest, res: Response) => {
   const { search, open } = req.query as any;
-  const filter: any = { isActive: true, isDeleted: { $ne: true } };
+  const filter: any = { isActive: true, isDeleted: { $ne: true }, approvalStatus: 'approved' };
   if (search) {
     const searchPattern = new RegExp(String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     const matchingMenuItems = await MenuItem.find({
@@ -33,7 +33,9 @@ export const listRestaurants = async (req: AuthRequest, res: Response) => {
 
 export const getRestaurant = async (req: AuthRequest, res: Response) => {
   const r = await Restaurant.findById(req.params.id);
-  if (!r || r.isDeleted) return res.status(404).json({ message: 'Restaurant not found' });
+  if (!r || (r as any).isDeleted) return res.status(404).json({ message: 'Restaurant not found' });
+  // Unapproved/suspended kitchens are invisible publicly (owners use /my)
+  if ((r as any).approvalStatus !== 'approved') return res.status(404).json({ message: 'Restaurant not found' });
   res.json(r);
 };
 
@@ -56,10 +58,12 @@ export const updateRestaurant = async (req: AuthRequest, res: Response) => {
   if (!r || r.isDeleted) return res.status(404).json({ message: 'Not found' });
   if (r.ownerId.toString() !== req.user!.id && req.user!.role !== 'admin')
     return res.status(403).json({ message: 'Forbidden' });
-  // Payout flags + linked account can only change via PUT /:id/payout (validated flow)
-  const { payoutEnabled, payoutVerified, payoutUpdatedAt, payoutAccountNumber, razorpayLinkedAccountId, routeOnboarded, ...safe } = req.body || {};
+  // Payout flags + linked account can only change via PUT /:id/payout (validated flow).
+  // Approval fields are admin-only (PATCH /api/admin/...) — owners must never self-approve.
+  const { payoutEnabled, payoutVerified, payoutUpdatedAt, payoutAccountNumber, razorpayLinkedAccountId, routeOnboarded, approvalStatus, approvalNote, approvedAt, approvedBy, ...safe } = req.body || {};
   void payoutEnabled; void payoutVerified; void payoutUpdatedAt; void payoutAccountNumber;
   void razorpayLinkedAccountId; void routeOnboarded;
+  void approvalStatus; void approvalNote; void approvedAt; void approvedBy;
   Object.assign(r, safe);
   await r.save();
   res.json(r);

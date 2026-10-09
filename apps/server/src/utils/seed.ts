@@ -28,6 +28,7 @@ const seed = async () => {
     isOpen: true,
     isActive: true,
     rating: 4.6,
+    approvalStatus: 'approved',
   });
   const r2 = await Restaurant.create({
     ownerId: owner._id,
@@ -39,6 +40,7 @@ const seed = async () => {
     isOpen: true,
     isActive: true,
     rating: 4.4,
+    approvalStatus: 'approved',
   });
   const r3 = await Restaurant.create({
     ownerId: owner._id,
@@ -50,6 +52,7 @@ const seed = async () => {
     isOpen: false,
     isActive: true,
     rating: 4.8,
+    approvalStatus: 'approved',
   });
 
   await MenuItem.insertMany([

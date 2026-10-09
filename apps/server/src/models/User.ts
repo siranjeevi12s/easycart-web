@@ -10,6 +10,11 @@ export interface IUser extends Document {
   role: UserRole;
   isVerified: boolean;
   isDeleted: boolean;
+  // Admin suspension — distinct from deletion. Suspended users fail
+  // authentication AND token verification (enforced in middleware).
+  isSuspended: boolean;
+  suspendedAt?: Date;
+  suspendReason?: string;
   lastLoginAt?: Date;
   passwordResetToken?: string;
   passwordResetExpires?: Date;
@@ -28,6 +33,9 @@ const UserSchema = new Schema<IUser>(
     role: { type: String, enum: ['customer', 'restaurant', 'admin'], required: true, default: 'customer' },
     isVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
+    isSuspended: { type: Boolean, default: false, index: true },
+    suspendedAt: { type: Date },
+    suspendReason: { type: String, maxlength: 500 },
     lastLoginAt: { type: Date },
     passwordResetToken: { type: String },
     passwordResetExpires: { type: Date },

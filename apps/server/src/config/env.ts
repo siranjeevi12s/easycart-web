@@ -22,3 +22,21 @@ export const env = {
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
   CORS_ORIGIN: (process.env.CORS_ORIGIN || 'http://localhost:5173').split(','),
 };
+
+// Production fail-fast: booting with dev-default secrets means anyone holding
+// this repo can forge tokens. Crash loudly instead of running insecure.
+if (env.NODE_ENV === 'production') {
+  const required: Array<[string, string]> = [
+    ['JWT_SECRET', env.JWT_SECRET],
+    ['JWT_REFRESH_SECRET', env.JWT_REFRESH_SECRET],
+    ['MONGODB_URI', env.MONGODB_URI],
+  ];
+  for (const [name, value] of required) {
+    if (!value || /dev-|dummy|change-me|localhost/.test(value)) {
+      throw new Error(`[env] ${name} must be set to a real value in production (refusing to boot with dev default)`);
+    }
+  }
+  if (env.JWT_SECRET === env.JWT_REFRESH_SECRET) {
+    throw new Error('[env] JWT_SECRET and JWT_REFRESH_SECRET must differ in production');
+  }
+}
