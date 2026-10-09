@@ -1,7 +1,27 @@
-# Netlify serves the Vite build; ALL /api traffic proxies to the Azure backend
-# (the portal uses a relative /api baseURL, so without this every data call 404s).
+# Shared by both Netlify sites (restaurant portal + admin console).
+# Each site sets its own Base directory / Build command / Publish directory
+# in the dashboard; this file supplies routing that code cannot express.
+#
+#   Restaurant site:  base=(root)  build=npm run build --workspace=@easycart/restaurant  publish=apps/restaurant/dist
+#   Admin site:       base=(root)  build=npm run build --workspace=@easycart/admin       publish=apps/admin/dist
+
+# Both portals call a RELATIVE /api baseURL, so all API traffic proxies to the
+# Azure backend. Without this every data call 404s on Netlify.
 [[redirects]]
   from = "/api/*"
   to = "https://easycart-g6end7e0c8hkhwe4.eastasia-01.azurewebsites.net/api/:splat"
   status = 200
   force = true
+
+# React Router deep links (e.g. /orders on refresh) must serve index.html.
+# MUST stay after the /api rule so API calls are never swallowed by the SPA.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Hashed Vite bundles are immutable — cache them hard at the edge.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
