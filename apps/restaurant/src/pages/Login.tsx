@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Box, Button, TextField, Typography, Link as MuiLink } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
+import { api, saveSession } from '../services/api';
 import AuthCard from '../components/AuthCard';
 import { brand } from '../theme/tokens';
 
@@ -18,8 +18,7 @@ export default function Login() {
     setBusy(true);
     try {
       const { data } = await api.post('/auth/login', { email, password });
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      saveSession(data.token, data.refreshToken, data.user);
       if (data.user.role !== 'restaurant' && data.user.role !== 'admin') setErr('Only restaurant/admin can login here');
       else nav('/');
     } catch (e: any) {

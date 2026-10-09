@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, TextField, Typography, Link as MuiLink } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
+import { api, saveSession } from '../services/api';
 import AuthCard from '../components/AuthCard';
 import { useSnack } from '../components/useSnack';
 import { brand } from '../theme/tokens';
@@ -18,8 +18,7 @@ export default function Register() {
     setBusy(true);
     try {
       const { data } = await api.post('/auth/register', { ...form, role: 'restaurant' });
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      saveSession(data.token, data.refreshToken, data.user);
       nav('/');
     } catch (e: any) {
       fail(e, e.response?.data?.errors?.[0]?.msg || 'Failed');

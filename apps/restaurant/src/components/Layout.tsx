@@ -13,6 +13,7 @@ import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import { useThemeMode } from '../context/ThemeContext';
 import { useTheme } from '@mui/material/styles';
+import { clearSession } from '../services/api';
 
 const nav = [
   { label: 'Dashboard', path: '/', icon: <DashboardIcon fontSize="small" /> },
@@ -29,8 +30,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { mode, toggle } = useThemeMode();
   const theme = useTheme();
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearSession();
     navigate('/login');
   };
   return (
