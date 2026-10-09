@@ -1,0 +1,3 @@
+# Manual deploys (drag-drop) ignore netlify.toml, so these rules ship inside dist.
+/api/*  https://easycart-g6end7e0c8hkhwe4.eastasia-01.azurewebsites.net/api/:splat  200!
+/*  /index.html  200
