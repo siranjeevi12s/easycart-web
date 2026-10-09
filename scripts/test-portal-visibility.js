@@ -35,6 +35,8 @@ async function api(method, path, token, body) {
   const restId = r.json?._id;
   ok('restaurant created', r.status === 201, restId);
   await api('PUT', `/api/restaurants/${restId}/payout`, ownerToken, { payoutMode: 'UPI', payoutUpiId: `vis${tag}@okhdfcbank` });
+  r = await api('POST', '/api/auth/login', null, { email: process.env.ADMIN_EMAIL || 'admin@easycart.local', password: process.env.ADMIN_PASSWORD || 'password123' });
+  await api('PATCH', `/api/admin/restaurants/${restId}/approval`, r.json?.token, { status: 'approved', note: 'test suite' });
   r = await api('POST', `/api/restaurants/${restId}/menu`, ownerToken, { name: 'Vis Thali', price: 300, category: 'Mains' });
   const itemId = r.json?._id;
 

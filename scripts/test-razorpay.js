@@ -60,6 +60,8 @@ const hmac = (msg, secret) => crypto.createHmac('sha256', secret).update(msg).di
   const restId = r.json?._id;
   r = await api('PUT', `/api/restaurants/${restId}/payout`, ownerToken, { payoutMode: 'UPI', payoutUpiId: `testkitchen${tag}@okhdfcbank` });
   ok('payout enabled', r.status === 200 && r.json?.payoutEnabled === true, JSON.stringify(r.json));
+  r = await api('POST', '/api/auth/login', null, { email: process.env.ADMIN_EMAIL || 'admin@easycart.local', password: process.env.ADMIN_PASSWORD || 'password123' });
+  await api('PATCH', `/api/admin/restaurants/${restId}/approval`, r.json?.token, { status: 'approved', note: 'test suite' });
   r = await api('POST', `/api/restaurants/${restId}/menu`, ownerToken, { name: 'Test Thali', price: 475, category: 'Mains' });
   ok('menu item added', r.status === 201, `status=${r.status} price=${r.json?.price}`);
   const itemId = r.json?._id;
@@ -69,8 +71,8 @@ const hmac = (msg, secret) => crypto.createHmac('sha256', secret).update(msg).di
   r = await api('POST', '/api/orders', custToken, { restaurantId: restId, items: [{ menuItemId: itemId, quantity: 1 }] });
   ok('order created', r.status === 201, `status=${r.status}`);
   const order = r.json?.orders?.[0] || r.json;
-  ok('backend totals', order?.subtotal === 475 && order?.tax === 24 && order?.totalAmount === 499, `sub=${order?.subtotal} tax=${order?.tax} total=${order?.totalAmount}`);
-  ok('split stored (0% fee)', order?.platformFee === 0 && order?.restaurantAmount === 499, `fee=${order?.platformFee} rest=${order?.restaurantAmount}`);
+  ok('backend totals', order?.subtotal === 475 && order?.tax === 10 && order?.totalAmount === 485, `sub=${order?.subtotal} tax=${order?.tax} total=${order?.totalAmount}`);
+  ok('split stored (0% fee)', order?.platformFee === 0 && order?.restaurantAmount === 485, `fee=${order?.platformFee} rest=${order?.restaurantAmount}`);
 
   // 4. Real Razorpay order
   console.log('[4] payment intent (real Razorpay TEST order)');
@@ -78,10 +80,11 @@ const hmac = (msg, secret) => crypto.createHmac('sha256', secret).update(msg).di
   ok('intent created', r.status === 200, `status=${r.status} mode=${r.json?.mode}`);
   const intent = r.json;
   ok('mode=test (real keys)', intent?.mode === 'test', `mode=${intent?.mode}`);
+  if (!intent?.checkoutPath) throw new Error('intent failed, cannot continue: ' + JSON.stringify({ status: r.status, json: r.json }));
   ok('checkout path issued', typeof intent?.checkoutPath === 'string', intent?.checkoutPath);
   // 4b. Prove the order really exists at Razorpay
   const rzp = await rzpGET(`/orders/${intent?.razorpayOrderId}`);
-  ok('order exists at Razorpay', rzp.status === 200 && rzp.json?.amount === 49900, `amount=${rzp.json?.amount} status=${rzp.status}`);
+  ok('order exists at Razorpay', rzp.status === 200 && rzp.json?.amount === 48500, `amount=${rzp.json?.amount} status=${rzp.status}`);
   // 4c. Hosted checkout page (public key only)
   const page = await fetch(`${BASE}${intent.checkoutPath}`);
   const html = await page.text();
@@ -133,7 +136,7 @@ const hmac = (msg, secret) => crypto.createHmac('sha256', secret).update(msg).di
   r = await api('POST', '/api/payments/create', custToken, { orderId: order4._id });
   const intent4 = r.json;
   const wpay = `pay_wh_${tag}`;
-  const whBody = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: wpay, order_id: intent4.razorpayOrderId, amount: 49900, status: 'captured' } } } });
+  const whBody = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: wpay, order_id: intent4.razorpayOrderId, amount: 48500, status: 'captured' } } } });
   // sign over the exact raw bytes Razorpay would sign
   const whSig = hmac(whBody, WEBHOOK_SECRET);
   r = await fetch(`${BASE}/api/payments/webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-razorpay-signature': whSig }, body: whBody }).then(async (res) => ({ status: res.status, json: await res.json().catch(() => null) }));

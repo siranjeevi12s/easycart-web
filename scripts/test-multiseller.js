@@ -60,6 +60,10 @@ const hmac = (o, p) => crypto.createHmac('sha256', KEY_SECRET).update(`${o}|${p}
     picks.push({ restId, itemId: x.json?._id, price: s.price, name: s.name });
   }
   ok('3 restaurants + menus', picks.every((p) => p.restId && p.itemId), picks.map((p) => `${p.name}=₹${p.price}`).join(' '));
+  // Approval gate: fresh restaurants start pending — admin-approve before ordering
+  r = await api('POST', '/api/auth/login', null, { email: process.env.ADMIN_EMAIL || 'admin@easycart.local', password: process.env.ADMIN_PASSWORD || 'password123' });
+  const adminTok = r.json?.token;
+  for (const p of picks) await api('PATCH', `/api/admin/restaurants/${p.restId}/approval`, adminTok, { status: 'approved', note: 'test suite' });
 
   console.log('[3] batch order (one per seller)');
   r = await api('POST', '/api/orders', custToken, {
@@ -70,7 +74,7 @@ const hmac = (o, p) => crypto.createHmac('sha256', KEY_SECRET).update(`${o}|${p}
   ok('shared batchId', orders.every((o) => o.batchId === batchId), batchId);
   const combined = orders.reduce((s, o) => s + o.totalAmount, 0);
   console.log(`    totals: ${orders.map((o) => `${o.orderNumber}=₹${o.totalAmount}`).join(' ')} combined=₹${combined}`);
-  ok('backend totals sane', orders.every((o) => o.totalAmount === Math.round(o.subtotal * 1.05)), 'subtotal+5%tax each');
+  ok('backend totals sane', orders.every((o) => o.totalAmount === Math.round(o.subtotal * 1.02)), 'subtotal+2%tax each');
 
   console.log('[4] single Razorpay intent for combined total');
   r = await api('POST', '/api/payments/create', custToken, { orderIds: orders.map((o) => o._id), batchId });
