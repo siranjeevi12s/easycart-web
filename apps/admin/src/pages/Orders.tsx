@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Box, Button, Drawer, FormControl, InputLabel, MenuItem, Select, Typography } from '@mui/material';
+import { Box, Button, Chip, Drawer, FormControl, InputLabel, MenuItem, Select, Typography } from '@mui/material';
+import { useSearchParams } from 'react-router-dom';
 import { apiGet } from '../services/api';
 import { DataTable, ErrorState, LoadingSkeleton, PageHeader, SearchFilterBar, StatusChip } from '../components/ui';
 import { fmtDate, fmtINR, useAdminList } from '../hooks';
@@ -8,8 +9,28 @@ const STATUSES = ['PAID', 'ACCEPTED', 'PREPARING', 'READY', 'PICKED_UP', 'CANCEL
 const PAYMENTS = ['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED'];
 
 export default function Orders() {
-  const list = useAdminList('orders', apiGet.orders, { limit: 20 });
+  const [params, setParams] = useSearchParams();
+  const initialExtra: Record<string, any> = {};
+  const pStatus = params.get('status');
+  const pRest = params.get('restaurantId');
+  if (pStatus) initialExtra.status = pStatus;
+  if (pRest) initialExtra.restaurantId = pRest;
+  const list = useAdminList('orders', apiGet.orders, { limit: 20, extra: initialExtra });
   const [detail, setDetail] = useState<any | null>(null);
+
+  // Keep the URL in sync so chart drill-downs are shareable/bookmarkable
+  const syncUrl = (next: Record<string, any>) => {
+    const q: Record<string, string> = {};
+    if (next.status) q.status = next.status;
+    if (next.restaurantId) q.restaurantId = next.restaurantId;
+    setParams(q, { replace: true });
+  };
+  const setFilterSync = (k: string, v: any) => {
+    const next = { ...list.filters, [k]: v };
+    if (!v) delete next[k];
+    list.setFilter(k, v);
+    syncUrl(next);
+  };
 
   return (
     <Box>
@@ -17,18 +38,21 @@ export default function Orders() {
       <SearchFilterBar search={list.search} onSearch={list.setSearch} placeholder="Search order # (e.g. FD-)…">
         <FormControl size="small" sx={{ minWidth: 130 }}>
           <InputLabel>Status</InputLabel>
-          <Select value={list.filters.status || ''} label="Status" onChange={(e) => list.setFilter('status', e.target.value || undefined)}>
+          <Select value={list.filters.status || ''} label="Status" onChange={(e) => setFilterSync('status', e.target.value || undefined)}>
             <MenuItem value="">All</MenuItem>
             {STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 130 }}>
           <InputLabel>Payment</InputLabel>
-          <Select value={list.filters.payment || ''} label="Payment" onChange={(e) => list.setFilter('payment', e.target.value || undefined)}>
+          <Select value={list.filters.payment || ''} label="Payment" onChange={(e) => setFilterSync('payment', e.target.value || undefined)}>
             <MenuItem value="">All</MenuItem>
             {PAYMENTS.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
           </Select>
         </FormControl>
+        {list.filters.restaurantId && (
+          <Chip label={`Restaurant: ${String(list.filters.restaurantId).slice(-6)}`} onDelete={() => setFilterSync('restaurantId', undefined)} size="small" />
+        )}
       </SearchFilterBar>
       {list.isLoading ? <LoadingSkeleton /> : list.isError ? <ErrorState message="Failed to load orders." onRetry={list.refetch} /> : (
         <DataTable

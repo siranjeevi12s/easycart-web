@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createTheme, ThemeProvider, CssBaseline } from '@mui/material';
+import { brand } from '@easycart/design-tokens';
 
 type Mode = 'light' | 'dark';
 interface Ctx { mode: Mode; toggle: () => void }
@@ -24,7 +25,7 @@ export function CustomThemeProvider({ children }: { children: React.ReactNode })
   const theme = useMemo(() => createTheme({
     palette: {
       mode,
-      primary: { main: '#FF6B35' },
+      primary: { main: brand.primary },
       secondary: { main: '#1A1A1A' },
       background: mode === 'light' ? { default: '#FFF8F5', paper: '#FFFFFF' } : { default: '#121212', paper: '#1E1E1E' },
       text: mode === 'light' ? { primary: '#1A1A1A', secondary: '#666' } : { primary: '#EAEAEA', secondary: '#A0A0A0' },

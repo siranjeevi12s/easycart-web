@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Box, Button, Card, CardContent, FormControlLabel, Stack, Switch, TextField } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, FormControlLabel, Stack, Switch, TextField } from '@mui/material';
 import { api } from '../services/api';
 import PageHeader from '../components/PageHeader';
 import EmptyState from '../components/EmptyState';
@@ -23,6 +23,19 @@ export default function Profile() {
     }
   };
   useEffect(() => { load(); }, []);
+  // Live status: reflect admin approvals/suspensions without a manual reload —
+  // poll quietly + refetch whenever the tab regains focus.
+  useEffect(() => {
+    const t = setInterval(() => { load().catch(() => {}); }, 20000);
+    const onFocus = () => { load().catch(() => {}); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, []);
 
   const create = async () => {
     if (!form.name.trim()) { show('Restaurant name required', 'error'); return; }
@@ -67,8 +80,22 @@ export default function Profile() {
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
                 <Box sx={{ fontWeight: 700, wordBreak: 'break-word' }}>{r.name}</Box>
-                <StatusChip status={r.isActive ? 'Active' : 'Deactivated'} kind={r.isActive ? 'success' : 'muted'} />
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <StatusChip status={r.approvalStatus || 'pending'} />
+                  <StatusChip status={r.isActive ? 'Active' : 'Deactivated'} kind={r.isActive ? 'success' : 'muted'} />
+                </Stack>
               </Stack>
+              {(r.approvalStatus === 'pending' || r.approvalStatus === 'under_review') && (
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  {r.approvalStatus === 'pending' ? 'Submitted — waiting for admin approval. It appears publicly once approved.' : 'Under review by the admin team.'}
+                </Alert>
+              )}
+              {(r.approvalStatus === 'rejected' || r.approvalStatus === 'suspended') && (
+                <Alert severity="error" sx={{ mt: 1 }}>
+                  {r.approvalStatus === 'rejected' ? 'Application rejected' : 'Suspended by admin'}
+                  {r.approvalNote ? `: ${r.approvalNote}` : ''} — not visible to customers and cannot take orders.
+                </Alert>
+              )}
               <Box color="text.secondary" sx={{ typography: 'body2', wordBreak: 'break-word', mt: 0.5 }}>{r.address} • {r.phone}</Box>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 0, sm: 2 }} sx={{ mt: 1 }}>
                 <FormControlLabel control={<Switch checked={r.isOpen} onChange={() => toggle(r, 'isOpen')} />} label={r.isOpen ? 'Open' : 'Closed'} />

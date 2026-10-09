@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { ConfirmDialog, DataTable, ErrorState, LoadingSkeleton, PageHeader } from '../components/ui';
 import { fmtDate, useAdminList } from '../hooks';
+import { brand } from '../theme';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -42,7 +43,7 @@ export default function Admins() {
       <PageHeader
         title="Admin Users"
         sub="Single admin role in this version — every admin here has full console access. No public registration exists."
-        action={<Button variant="contained" sx={{ bgcolor: '#FF6B35' }} onClick={() => setOpen(true)}>+ New admin</Button>}
+        action={<Button variant="contained" sx={{ bgcolor: brand.primary }} onClick={() => setOpen(true)}>+ New admin</Button>}
       />
       {adminsQuery.isLoading ? <LoadingSkeleton /> : adminsQuery.isError ? <ErrorState message="Failed to load admins." onRetry={adminsQuery.refetch} /> : (
         <DataTable
@@ -73,7 +74,7 @@ export default function Admins() {
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setConfirmClose(true)} sx={{ minHeight: 40, flex: 1 }} variant="outlined">Cancel</Button>
-          <Button onClick={handleSubmit((f) => create.mutate(f))} variant="contained" disabled={isSubmitting || create.isPending} sx={{ minHeight: 40, flex: 1, bgcolor: '#FF6B35' }}>
+          <Button onClick={handleSubmit((f) => create.mutate(f))} variant="contained" disabled={isSubmitting || create.isPending} sx={{ minHeight: 40, flex: 1, bgcolor: brand.primary }}>
             Create admin
           </Button>
         </DialogActions>

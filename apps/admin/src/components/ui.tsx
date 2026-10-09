@@ -1,6 +1,6 @@
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Skeleton, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from '@mui/material';
 import type { ReactNode } from 'react';
-import { useThemeMode } from '../theme';
+import { useThemeMode, brand } from '../theme';
 
 /* ---------- StatusChip: theme-aware pill ---------- */
 const KIND: Record<string, 'success' | 'warning' | 'error' | 'info' | 'default'> = {
@@ -31,7 +31,7 @@ export function StatCard({ value, label, highlight }: { value: ReactNode; label:
   const { mode } = useThemeMode();
   void mode;
   return (
-    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 3, p: 2.5, bgcolor: highlight ? '#FF6B35' : 'background.paper', color: highlight ? 'white' : 'text.primary', height: '100%' }}>
+    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 3, p: 2.5, bgcolor: highlight ? brand.primary : 'background.paper', color: highlight ? 'white' : 'text.primary', height: '100%' }}>
       <Typography variant="h4" fontWeight={800}>{value}</Typography>
       <Typography color={highlight ? 'white' : 'text.secondary'} variant="body2">{label}</Typography>
     </Box>
@@ -57,8 +57,8 @@ interface TableProps<T> {
 }
 export function DataTable<T>({ cols, rows, total, page, limit, onPage, rowKey, empty = 'No records.' }: TableProps<T>) {
   return (
-    <TableContainer sx={{ border: 1, borderColor: 'divider', borderRadius: 3 }}>
-      <Table size="small">
+    <TableContainer sx={{ border: 1, borderColor: 'divider', borderRadius: 3, overflowX: 'auto' }}>
+      <Table size="small" sx={{ minWidth: 640 }}>
         <TableHead>
           <TableRow>
             {cols.map((c) => (

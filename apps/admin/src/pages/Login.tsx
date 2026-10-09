@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { api, saveSession } from '../services/api';
+import { brand } from '../theme';
 
 const schema = z.object({
   email: z.string().email('Valid email required'),
@@ -37,7 +38,7 @@ export default function Login() {
       <Card sx={{ maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(255,107,53,0.15)' }}>
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h5" fontWeight={800} gutterBottom>
-            EasyCart <Box component="span" sx={{ color: '#FF6B35' }}>Admin</Box>
+            EasyCart <Box component="span" sx={{ color: brand.primary }}>Admin</Box>
           </Typography>
           <Typography color="text.secondary" variant="body2" sx={{ mb: 3 }}>
             Platform operations console. Admin credentials only.
@@ -46,7 +47,7 @@ export default function Login() {
           <Box component="form" onSubmit={handleSubmit(submit)} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField label="Email" fullWidth autoComplete="username" error={!!errors.email} helperText={errors.email?.message} {...register('email')} />
             <TextField label="Password" type="password" fullWidth autoComplete="current-password" error={!!errors.password} helperText={errors.password?.message} {...register('password')} />
-            <Button type="submit" variant="contained" size="large" disabled={isSubmitting} sx={{ bgcolor: '#FF6B35', '&:hover': { bgcolor: '#E55A2B' }, minHeight: 48 }}>
+            <Button type="submit" variant="contained" size="large" disabled={isSubmitting} sx={{ bgcolor: brand.primary, '&:hover': { bgcolor: brand.primaryDark }, minHeight: 48 }}>
               {isSubmitting ? 'Signing in…' : 'Sign in'}
             </Button>
           </Box>

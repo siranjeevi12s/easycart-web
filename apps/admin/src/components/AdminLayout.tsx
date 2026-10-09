@@ -22,7 +22,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { useThemeMode } from '../theme';
+import { useThemeMode, brand } from '../theme';
 import { clearSession, storedAdmin } from '../services/api';
 
 const NAV = [
@@ -45,6 +45,8 @@ const NAV = [
 
 const titles: Record<string, string> = Object.fromEntries(NAV.map((n) => [n.path, n.label]));
 
+const noScrollbar = { scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } } as const;
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
   const nav = useNavigate();
@@ -61,17 +63,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const drawer = (
     <>
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Box sx={{ bgcolor: '#FF6B35', borderRadius: 2, p: 0.8, display: 'flex' }}>
+                <Box sx={{ bgcolor: brand.primary, borderRadius: 2, p: 0.8, display: 'flex' }}>
           <RestaurantIcon sx={{ color: 'white', fontSize: 20 }} />
         </Box>
-        <Typography fontWeight={800}>EasyCart <Box component="span" sx={{ color: '#FF6B35' }}>Admin</Box></Typography>
+            <Typography fontWeight={800}>EasyCart <Box component="span" sx={{ color: brand.primary }}>Admin</Box></Typography>
       </Box>
       <Divider />
       <List sx={{ p: 1 }}>
         {NAV.map((n) => (
           <ListItem key={n.path} disablePadding>
             <ListItemButton component={Link} to={n.path} onClick={() => setOpen(false)} selected={loc.pathname === n.path} sx={{ borderRadius: 2, mb: 0.25 }}>
-              <ListItemIcon sx={{ minWidth: 36, color: loc.pathname === n.path ? '#FF6B35' : 'text.secondary' }}>{n.icon}</ListItemIcon>
+                <ListItemIcon sx={{ minWidth: 36, color: loc.pathname === n.path ? brand.primary : 'text.secondary' }}>{n.icon}</ListItemIcon>
               <ListItemText primary={n.label} primaryTypographyProps={{ fontWeight: loc.pathname === n.path ? 700 : 500, fontSize: 14 }} />
             </ListItemButton>
           </ListItem>
@@ -83,11 +85,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <Box component="nav" sx={{ width: { md: 240 }, flexShrink: 0 }}>
-        <Drawer variant="temporary" open={open} onClose={() => setOpen(false)} sx={{ display: { md: 'none' } }} PaperProps={{ sx: { width: 250 } }}>
+        <Drawer variant="temporary" open={open} onClose={() => setOpen(false)} sx={{ display: { md: 'none' } }} PaperProps={{ sx: { width: 250, ...noScrollbar } }}>
           {drawer}
           <Box sx={{ p: 2 }}><IconButton onClick={() => setOpen(false)} aria-label="close"><CloseIcon /></IconButton></Box>
         </Drawer>
-        <Drawer variant="permanent" open sx={{ display: { xs: 'none', md: 'block' } }} PaperProps={{ sx: { width: 240, boxSizing: 'border-box' } }}>
+        <Drawer variant="permanent" open sx={{ display: { xs: 'none', md: 'block' } }} PaperProps={{ sx: { width: 240, boxSizing: 'border-box', ...noScrollbar } }}>
           {drawer}
         </Drawer>
       </Box>

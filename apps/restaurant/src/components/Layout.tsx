@@ -13,6 +13,7 @@ import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import { useThemeMode } from '../context/ThemeContext';
 import { useTheme } from '@mui/material/styles';
+import { brand } from '../theme/tokens';
 import { clearSession } from '../services/api';
 
 const nav = [
@@ -38,31 +39,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <AppBar position="sticky" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: `1px solid ${theme.palette.divider}`, color: 'text.primary' }}>
         <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 1, sm: 2 }, minHeight: { xs: 56, sm: 64 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-            <Box sx={{ bgcolor: '#FF6B35', p: 0.8, borderRadius: 2, display: 'flex', flexShrink: 0 }}>
+            <Box sx={{ bgcolor: brand.primary, p: 0.8, borderRadius: 2, display: 'flex', flexShrink: 0 }}>
               <RestaurantIcon sx={{ color: 'white', fontSize: 20 }} />
             </Box>
-            <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, whiteSpace: 'nowrap' }}>EasyCart <Box component="span" sx={{ color: '#FF6B35', display: { xs: 'none', sm: 'inline' } }}>Restaurant</Box></Typography>
-            <Chip label="Pre-Order" size="small" sx={{ ml: 1, bgcolor: mode === 'light' ? '#FFF2EC' : 'rgba(255,107,53,0.15)', color: '#FF6B35', display: { xs: 'none', lg: 'flex' } }} />
+            <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, whiteSpace: 'nowrap' }}>EasyCart <Box component="span" sx={{ color: brand.primary, display: { xs: 'none', sm: 'inline' } }}>Restaurant</Box></Typography>
+            <Chip label="Pre-Order" size="small" sx={{ ml: 1, bgcolor: mode === 'light' ? '#FFF2EC' : 'rgba(255,107,53,0.15)', color: brand.primary, display: { xs: 'none', lg: 'flex' } }} />
           </Box>
           {/* Desktop nav */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
             {nav.map((n) => (
               <Button key={n.path} component={Link} to={n.path} startIcon={n.icon}
-                sx={{ color: loc.pathname === n.path ? '#FF6B35' : 'text.secondary', fontWeight: loc.pathname === n.path ? 700 : 500, bgcolor: loc.pathname === n.path ? (mode === 'light' ? '#FFF2EC' : 'rgba(255,107,53,0.15)') : 'transparent', minHeight: 40, whiteSpace: 'nowrap' }}>
+                sx={{ color: loc.pathname === n.path ? brand.primary : 'text.secondary', fontWeight: loc.pathname === n.path ? 700 : 500, bgcolor: loc.pathname === n.path ? (mode === 'light' ? '#FFF2EC' : 'rgba(255,107,53,0.15)') : 'transparent', minHeight: 40, whiteSpace: 'nowrap' }}>
                 {n.label}
               </Button>
             ))}
             <IconButton onClick={toggle} sx={{ ml: 0.5, border: `1px solid ${theme.palette.divider}`, color: 'text.primary' }} aria-label="toggle theme" title={mode === 'light' ? 'Switch to dark' : 'Switch to light'}>
               {mode === 'light' ? <DarkModeIcon fontSize="small" /> : <LightModeIcon fontSize="small" />}
             </IconButton>
-            <Button onClick={logout} variant="outlined" sx={{ ml: 1, borderColor: '#FF6B35', color: '#FF6B35', minHeight: 40 }}>Logout</Button>
+            <Button onClick={logout} variant="outlined" sx={{ ml: 1, borderColor: brand.primary, color: brand.primary, minHeight: 40 }}>Logout</Button>
           </Box>
           {/* Mobile actions */}
           <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1 }}>
             <IconButton onClick={toggle} sx={{ color: 'text.primary', border: `1px solid ${theme.palette.divider}` }} aria-label="toggle theme">
               {mode === 'light' ? <DarkModeIcon fontSize="small" /> : <LightModeIcon fontSize="small" />}
             </IconButton>
-            <IconButton onClick={() => setOpen(true)} sx={{ color: '#FF6B35', border: `1px solid ${theme.palette.divider}` }} aria-label="menu">
+            <IconButton onClick={() => setOpen(true)} sx={{ color: brand.primary, border: `1px solid ${theme.palette.divider}` }} aria-label="menu">
               <MenuIcon />
             </IconButton>
           </Box>
@@ -79,8 +80,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <List sx={{ p: 1 }}>
           {nav.map((n) => (
             <ListItem key={n.path} disablePadding>
-              <ListItemButton component={Link} to={n.path} onClick={() => setOpen(false)} selected={loc.pathname === n.path} sx={{ borderRadius: 2, mb: 0.5, '&.Mui-selected': { bgcolor: mode === 'light' ? '#FFF2EC' : 'rgba(255,107,53,0.15)', color: '#FF6B35' } }}>
-                <ListItemIcon sx={{ color: loc.pathname === n.path ? '#FF6B35' : 'text.secondary', minWidth: 36 }}>{n.icon}</ListItemIcon>
+              <ListItemButton component={Link} to={n.path} onClick={() => setOpen(false)} selected={loc.pathname === n.path} sx={{ borderRadius: 2, mb: 0.5, '&.Mui-selected': { bgcolor: mode === 'light' ? '#FFF2EC' : 'rgba(255,107,53,0.15)', color: brand.primary } }}>
+                <ListItemIcon sx={{ color: loc.pathname === n.path ? brand.primary : 'text.secondary', minWidth: 36 }}>{n.icon}</ListItemIcon>
                 <ListItemText primary={n.label} primaryTypographyProps={{ fontWeight: loc.pathname === n.path ? 700 : 500 }} />
               </ListItemButton>
             </ListItem>
@@ -89,7 +90,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <Divider />
         <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           <Button fullWidth variant="outlined" startIcon={mode === 'light' ? <DarkModeIcon /> : <LightModeIcon />} onClick={toggle} sx={{ minHeight: 44 }}>{mode === 'light' ? 'Dark mode' : 'Light mode'}</Button>
-          <Button fullWidth variant="outlined" startIcon={<LogoutIcon />} onClick={logout} sx={{ borderColor: '#FF6B35', color: '#FF6B35', minHeight: 44 }}>Logout</Button>
+          <Button fullWidth variant="outlined" startIcon={<LogoutIcon />} onClick={logout} sx={{ borderColor: brand.primary, color: brand.primary, minHeight: 44 }}>Logout</Button>
         </Box>
       </Drawer>
       <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3 }, px: { xs: 1.5, sm: 2, md: 3 }, overflowX: 'hidden' }}>{children}</Container>

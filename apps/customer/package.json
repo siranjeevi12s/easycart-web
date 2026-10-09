@@ -27,7 +27,8 @@
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
     "react-native-webview": "13.16.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "@easycart/design-tokens": "1.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

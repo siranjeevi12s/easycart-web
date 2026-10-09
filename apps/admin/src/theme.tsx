@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createTheme, ThemeProvider, CssBaseline } from '@mui/material';
+import { adminCanvas, brand } from '@easycart/design-tokens';
 
 type Mode = 'light' | 'dark';
 
 const ThemeModeContext = createContext<{ mode: Mode; toggle: () => void }>({ mode: 'light', toggle: () => {} });
 export const useThemeMode = () => useContext(ThemeModeContext);
 
-export const brand = { primary: '#FF6B35', primaryDark: '#E55A2B', ink: '#1A1A1A' } as const;
+export { brand };
 
 export function AdminThemeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<Mode>(() => {
@@ -24,13 +25,25 @@ export function AdminThemeProvider({ children }: { children: React.ReactNode }) 
         palette: {
           mode,
           primary: { main: brand.primary },
-          background: mode === 'light' ? { default: '#FAFAF9', paper: '#FFFFFF' } : { default: '#121212', paper: '#1E1E1E' },
-          text: mode === 'light' ? { primary: '#1C1917', secondary: '#57534E' } : { primary: '#EAEAEA', secondary: '#A0A0A0' },
+          background: mode === 'light' ? { default: adminCanvas.light.background, paper: adminCanvas.light.paper } : { default: adminCanvas.dark.background, paper: adminCanvas.dark.paper },
+          text: mode === 'light' ? { primary: adminCanvas.light.text, secondary: adminCanvas.light.muted } : { primary: adminCanvas.dark.text, secondary: adminCanvas.dark.muted },
         },
         typography: { fontFamily: 'Inter, system-ui, sans-serif' },
         shape: { borderRadius: 12 },
         components: {
-          MuiCard: { styleOverrides: { root: { backgroundImage: 'none' } } },
+          MuiCard: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                backgroundImage: 'none',
+                border: `1px solid ${theme.palette.divider}`,
+                transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                '&:hover': {
+                  borderColor: brand.primary,
+                  boxShadow: '0 4px 16px rgba(255,107,53,0.12)',
+                },
+              }),
+            },
+          },
           MuiButton: { defaultProps: { disableElevation: true }, styleOverrides: { root: { textTransform: 'none', fontWeight: 600, minHeight: 40 } } },
         },
       }),
