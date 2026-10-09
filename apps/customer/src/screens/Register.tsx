@@ -1,13 +1,22 @@
 import { useState, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
 import { AuthContext } from '../context/AppContext';
+import { Screen } from '../components/Screen';
+import { AppText } from '../components/AppText';
+import { AppButton } from '../components/AppButton';
+import { AppTextField } from '../components/AppTextField';
 
 export default function Register({ navigation }: any) {
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '' });
+  const [busy, setBusy] = useState(false);
   const { setUser } = useContext(AuthContext);
+  const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+
   const submit = async () => {
+    if (!form.name.trim() || !form.email.trim() || !form.password) return Alert.alert('Validation', 'Name, email and password required');
+    setBusy(true);
     try {
       const { data } = await api.post('/auth/register', { ...form, role: 'customer' });
       await AsyncStorage.setItem('token', data.token);
@@ -15,26 +24,27 @@ export default function Register({ navigation }: any) {
       setUser(data.user);
     } catch (e: any) {
       Alert.alert('Failed', e.response?.data?.message || 'Error');
+    } finally {
+      setBusy(false);
     }
   };
+
   return (
-    <View style={s.container}>
-      <Text style={s.title}>Create Account</Text>
-      <Text style={s.sub}>Order before you arrive.</Text>
-      <TextInput style={s.input} placeholder="Full Name" value={form.name} onChangeText={(v) => setForm({ ...form, name: v })} />
-      <TextInput style={s.input} placeholder="Email" value={form.email} onChangeText={(v) => setForm({ ...form, email: v })} autoCapitalize="none" />
-      <TextInput style={s.input} placeholder="Phone" value={form.phone} onChangeText={(v) => setForm({ ...form, phone: v })} />
-      <TextInput style={s.input} placeholder="Password" value={form.password} onChangeText={(v) => setForm({ ...form, password: v })} secureTextEntry />
-      <TouchableOpacity style={s.btn} onPress={submit}><Text style={s.btnText}>Register</Text></TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}><Text style={s.link}>Already have an account? Login</Text></TouchableOpacity>
-    </View>
+    <Screen>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'center' }}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+          <AppText variant="title">Create Account</AppText>
+          <AppText variant="body" tone="muted" style={{ marginBottom: 16 }}>
+            Order before you arrive.
+          </AppText>
+          <AppTextField label="Full Name" value={form.name} onChangeText={set('name')} autoCapitalize="words" />
+          <AppTextField label="Email" value={form.email} onChangeText={set('email')} keyboardType="email-address" autoCapitalize="none" />
+          <AppTextField label="Phone" value={form.phone} onChangeText={set('phone')} keyboardType="phone-pad" />
+          <AppTextField label="Password" value={form.password} onChangeText={set('password')} secure />
+          <AppButton title="Register" onPress={submit} loading={busy} style={{ marginTop: 4 }} />
+          <AppButton title="Already have an account? Login" variant="text" onPress={() => navigation.navigate('Login')} style={{ marginTop: 4 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Screen>
   );
 }
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF8F5', padding: 24, justifyContent: 'center' },
-  title: { fontSize: 26, fontWeight: '700' }, sub: { color: '#666', marginBottom: 16 },
-  input: { backgroundColor: 'white', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#FFE8DE' },
-  btn: { backgroundColor: '#FF6B35', padding: 16, borderRadius: 12, alignItems: 'center' },
-  btnText: { color: 'white', fontWeight: '700' },
-  link: { textAlign: 'center', color: '#FF6B35', marginTop: 12, fontWeight: '600' }
-});

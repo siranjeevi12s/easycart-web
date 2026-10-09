@@ -1,7 +1,14 @@
 import { useContext } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { View, FlatList } from 'react-native';
+import { Divider } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CartContext } from '../context/AppContext';
+import { Screen } from '../components/Screen';
+import { AppText } from '../components/AppText';
+import { AppButton } from '../components/AppButton';
+import { AppCard } from '../components/AppCard';
+import { QtyStepper } from '../components/QtyStepper';
+import { EmptyState } from '../components/EmptyState';
 
 export default function Cart({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -18,49 +25,64 @@ export default function Cart({ navigation }: any) {
     });
   };
 
-  if (cart.items.length === 0) return <View style={[s.empty, { paddingTop: insets.top + 16 }]}><Text style={s.emptyText}>Your cart is empty</Text><Text style={{ color: '#666' }}>Add items from a restaurant</Text></View>;
+  if (cart.items.length === 0)
+    return (
+      <Screen>
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <EmptyState icon="cart-off" message="Your cart is empty" hint="Add items from a restaurant" />
+          <AppButton title="Browse Restaurants" onPress={() => navigation.navigate('Home')} style={{ marginTop: 8 }} />
+        </View>
+      </Screen>
+    );
 
   return (
-    <View style={[s.container, { paddingTop: insets.top + 16 }]}>
-      <Text style={s.title}>Your Cart</Text>
+    <Screen>
+      <AppText variant="title" style={{ marginBottom: 12 }}>
+        Your Cart
+      </AppText>
       <FlatList
         data={cart.items}
         keyExtractor={(i) => i._id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 8 }}
         renderItem={({ item }) => (
-          <View style={s.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '600' }}>{item.name}</Text>
-              {!!item.restaurantName && <Text style={{ color: '#FF6B35', fontSize: 11, fontWeight: '600' }}>{item.restaurantName}</Text>}
-              <Text style={{ color: '#666' }}>₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}</Text>
+          <AppCard>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <AppText variant="bodyBold">{item.name}</AppText>
+                {!!item.restaurantName && (
+                  <AppText variant="tiny" tone="primary">
+                    {item.restaurantName}
+                  </AppText>
+                )}
+                <AppText variant="body" tone="muted">
+                  ₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}
+                </AppText>
+              </View>
+              <QtyStepper quantity={item.quantity} onChange={(d) => changeQty(item._id, d)} />
             </View>
-            <View style={s.qtyBox}>
-              <TouchableOpacity onPress={() => changeQty(item._id, -1)} style={s.qBtn}><Text>-</Text></TouchableOpacity>
-              <Text style={{ fontWeight: '700', paddingHorizontal: 10 }}>{item.quantity}</Text>
-              <TouchableOpacity onPress={() => changeQty(item._id, 1)} style={s.qBtn}><Text>+</Text></TouchableOpacity>
-            </View>
-          </View>
+          </AppCard>
         )}
       />
-      <View style={s.summary}>
-        <View style={s.line}><Text>Subtotal</Text><Text>₹{subtotal}</Text></View>
-        <View style={s.line}><Text>Tax (5%)</Text><Text>₹{tax}</Text></View>
-        <View style={[s.line, { borderTopWidth: 1, borderColor: '#FFE8DE', paddingTop: 8, marginTop: 8 }]}><Text style={{ fontWeight: '800' }}>Total (backend authoritative)</Text><Text style={{ fontWeight: '800', color: '#FF6B35' }}>₹{total}</Text></View>
-        <TouchableOpacity style={s.payBtn} onPress={() => navigation.navigate('Checkout')}><Text style={s.payText}>Proceed to Payment →</Text></TouchableOpacity>
-        <TouchableOpacity onPress={clearCart} style={{ alignItems: 'center', marginTop: 10 }}><Text style={{ color: '#EF4444' }}>Clear Cart</Text></TouchableOpacity>
-      </View>
+      <AppCard>
+        <SummaryRow label="Subtotal" value={`₹${subtotal}`} />
+        <SummaryRow label="Tax (5%)" value={`₹${tax}`} />
+        <Divider style={{ marginVertical: 8 }} />
+        <SummaryRow label="Total (backend authoritative)" value={`₹${total}`} bold accent />
+        <AppButton title="Proceed to Payment →" onPress={() => navigation.navigate('Checkout')} style={{ marginTop: 12 }} />
+        <AppButton title="Clear Cart" variant="text" onPress={clearCart} style={{ marginTop: 4 }} />
+      </AppCard>
+    </Screen>
+  );
+}
+
+function SummaryRow({ label, value, bold = false, accent = false }: { label: string; value: string; bold?: boolean; accent?: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+      <AppText variant={bold ? 'bodyBold' : 'body'}>{label}</AppText>
+      <AppText variant={bold ? 'bodyBold' : 'body'} tone={accent ? 'primary' : 'text'}>
+        {value}
+      </AppText>
     </View>
   );
 }
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF8F5', padding: 16 },
-  title: { fontSize: 20, fontWeight: '800', marginBottom: 12 },
-  row: { backgroundColor: 'white', padding: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  qtyBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF2EC', borderRadius: 20, padding: 4 },
-  qBtn: { backgroundColor: 'white', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  summary: { backgroundColor: 'white', padding: 16, borderRadius: 16, marginTop: 12 },
-  line: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
-  payBtn: { backgroundColor: '#FF6B35', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 12 },
-  payText: { color: 'white', fontWeight: '800' },
-  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF8F5' },
-  emptyText: { fontSize: 18, fontWeight: '700' }
-});

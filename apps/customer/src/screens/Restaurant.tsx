@@ -1,73 +1,106 @@
 import { useEffect, useState, useContext } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import { View, FlatList, Alert, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button as PaperButton, useTheme } from 'react-native-paper';
 import { api } from '../services/api';
 import { CartContext } from '../context/AppContext';
+import { AppText } from '../components/AppText';
+import { AppCard } from '../components/AppCard';
+import { EmptyState } from '../components/EmptyState';
+import { LoadingView } from '../components/LoadingView';
 
 export default function Restaurant({ route, navigation }: any) {
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { restaurant } = route.params;
   const [menu, setMenu] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { cart, addToCart } = useContext(CartContext);
 
   useEffect(() => {
-    api.get(`/restaurants/${restaurant._id}/menu`).then(({ data }) => setMenu(data));
-  }, []);
+    api.get(`/restaurants/${restaurant._id}/menu`).then(({ data }) => setMenu(data)).catch(() => {}).finally(() => setLoading(false));
+  }, [restaurant._id]);
+
+  const add = (item: any) => {
+    if (!restaurant.isOpen) return Alert.alert('Restaurant closed');
+    addToCart(restaurant._id, item, restaurant.name);
+    Alert.alert('Added to cart', `${item.name} ×1 (${restaurant.name})`);
+  };
+
+  if (loading) return <LoadingView message="Loading menu…" />;
 
   return (
-    <View style={[s.container, { paddingTop: insets.top }]}>
-      <Image source={{ uri: restaurant.image }} style={s.hero} />
-      <View style={{ padding: 16 }}>
-        <Text style={s.name}>{restaurant.name}</Text>
-        <Text style={s.addr}>{restaurant.address} • {restaurant.isOpen ? 'Open' : 'Closed'}</Text>
-        <Text style={{ color: '#FF6B35', fontWeight: '600', marginTop: 4 }}>{restaurant.description}</Text>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {!!restaurant.image && <Image source={{ uri: restaurant.image }} style={{ width: '100%', height: 180 }} />}
+      <View style={{ padding: 16, paddingBottom: 0 }}>
+        <AppText variant="title">{restaurant.name}</AppText>
+        <AppText variant="caption" tone="muted" style={{ marginTop: 2 }}>
+          {restaurant.address} • {restaurant.isOpen ? 'Open' : 'Closed'}
+        </AppText>
+        {!!restaurant.description && (
+          <AppText variant="body" tone="primary" style={{ marginTop: 4 }}>
+            {restaurant.description}
+          </AppText>
+        )}
       </View>
 
       <FlatList
         data={menu}
         keyExtractor={(i) => i._id}
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-        ListHeaderComponent={<Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 8 }}>Menu — Tap ADD (backend calculates total)</Text>}
-        renderItem={({ item }) => (
-          <View style={s.card}>
-            <Image source={{ uri: item.image }} style={s.foodImg} />
-            <View style={{ flex: 1, padding: 10 }}>
-              <Text style={s.foodName}>{item.name}</Text>
-              <Text style={s.desc} numberOfLines={2}>{item.description}</Text>
-              <Text style={s.price}>₹{item.price} <Text style={{ color: '#666', fontWeight: '400' }}>• {item.category}</Text></Text>
-              {!item.isAvailable && <Text style={{ color: '#EF4444', fontSize: 12 }}>Unavailable</Text>}
-            </View>
-            <TouchableOpacity
-              disabled={!item.isAvailable || !restaurant.isOpen}
-              onPress={() => {
-                if (!restaurant.isOpen) return Alert.alert('Restaurant closed');
-                addToCart(restaurant._id, item, restaurant.name);
-                Alert.alert('Added to cart', `${item.name} ×1 (${restaurant.name})`);
-              }}
-              style={[s.addBtn, (!item.isAvailable || !restaurant.isOpen) && { opacity: 0.4 }]}>
-              <Text style={s.addText}>ADD</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <AppText variant="subheading" style={{ marginBottom: 8 }}>
+            Menu — Tap ADD (backend calculates total)
+          </AppText>
+        }
+        ListEmptyComponent={<EmptyState icon="food" message="No menu items yet." />}
+        renderItem={({ item }) => {
+          const disabled = !item.isAvailable || !restaurant.isOpen;
+          return (
+            <AppCard padded={false}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {!!item.image && <Image source={{ uri: item.image }} style={{ width: 90, height: 90, borderRadius: 10, margin: 8 }} />}
+                <View style={{ flex: 1, padding: 10 }}>
+                  <AppText variant="bodyBold">{item.name}</AppText>
+                  <AppText variant="caption" tone="muted" numberOfLines={2}>
+                    {item.description}
+                  </AppText>
+                  <AppText variant="bodyBold" style={{ marginTop: 4 }}>
+                    ₹{item.price} <AppText variant="caption" tone="muted">• {item.category}</AppText>
+                  </AppText>
+                  {!item.isAvailable && (
+                    <AppText variant="caption" tone="error">
+                      Unavailable
+                    </AppText>
+                  )}
+                </View>
+                <PaperButton
+                  mode="contained"
+                  disabled={disabled}
+                  onPress={() => add(item)}
+                  style={{ marginRight: 10, borderRadius: 10 }}
+                  accessibilityLabel={`Add ${item.name} to cart`}
+                >
+                  ADD
+                </PaperButton>
+              </View>
+            </AppCard>
+          );
+        }}
       />
 
       {cart.items.length > 0 && (
-        <TouchableOpacity style={[s.cartBar, { paddingBottom: insets.bottom + 16 }]} onPress={() => navigation.navigate('Checkout')}>
-          <Text style={s.cartText}>{cart.items.reduce((a: number, b: any) => a + b.quantity, 0)} items • Go to Cart →</Text>
-        </TouchableOpacity>
+        <PaperButton
+          mode="contained"
+          onPress={() => navigation.navigate('Checkout')}
+          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderRadius: 0, paddingBottom: insets.bottom + 4, backgroundColor: '#1A1A1A' }}
+          contentStyle={{ minHeight: 56 }}
+          accessibilityLabel="Go to cart"
+        >
+          {cart.items.reduce((a: number, b: any) => a + b.quantity, 0)} items • Go to Cart →
+        </PaperButton>
       )}
     </View>
   );
 }
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF8F5' },
-  hero: { width: '100%', height: 180 },
-  name: { fontSize: 20, fontWeight: '800' }, addr: { color: '#666', fontSize: 12, marginTop: 2 },
-  card: { backgroundColor: 'white', borderRadius: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 10, overflow: 'hidden', elevation: 1 },
-  foodImg: { width: 90, height: 90, borderRadius: 10, margin: 8 },
-  foodName: { fontWeight: '700' }, desc: { color: '#666', fontSize: 12 }, price: { fontWeight: '700', marginTop: 4 },
-  addBtn: { backgroundColor: '#FF6B35', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, marginRight: 10 },
-  addText: { color: 'white', fontWeight: '800' },
-  cartBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#1A1A1A', padding: 16, alignItems: 'center' },
-  cartText: { color: 'white', fontWeight: '700' }
-});

@@ -1,10 +1,17 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
+import { Divider, List, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, BASE_URL } from '../services/api';
 import { CartContext } from '../context/AppContext';
+import { Screen } from '../components/Screen';
+import { AppText } from '../components/AppText';
+import { AppButton } from '../components/AppButton';
+import { AppCard } from '../components/AppCard';
+import { EmptyState } from '../components/EmptyState';
 
 export default function Checkout({ navigation }: any) {
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { cart, clearCart } = useContext(CartContext);
   const [loading, setLoading] = useState(false);
@@ -42,7 +49,7 @@ export default function Checkout({ navigation }: any) {
       if (live) setPayees(out);
     })();
     return () => { live = false; };
-  }, [cart]);
+  }, [cart, groups]);
 
   const pay = async () => {
     if (!groups.length) return Alert.alert('Cart is empty');
@@ -75,7 +82,7 @@ export default function Checkout({ navigation }: any) {
           razorpay_signature: 'test_success'
         });
         const nums = (verify.data.orders || []).map((o: any) => o.orderNumber).join(', ');
-        Alert.alert('Payment Success ✅', `Orders ${nums} PAID.`);
+        Alert.alert('Payment Success', `Orders ${nums} PAID.`);
         clearCart();
         setLoading(false);
         navigation.replace('OrderTracking', { orderId: orderIds[0], orderIds, batchId: batch.batchId });
@@ -89,7 +96,6 @@ export default function Checkout({ navigation }: any) {
         orderId: orderIds[0],
         orderIds,
         batchId: intent.batchId || batch.batchId,
-        provider: intent.provider || 'razorpay',
       });
     } catch (e: any) {
       const code = e.response?.data?.code;
@@ -103,47 +109,72 @@ export default function Checkout({ navigation }: any) {
     }
   };
 
+  if (!groups.length)
+    return (
+      <Screen>
+        <EmptyState icon="cart-off" message="Nothing to check out" hint="Your cart is empty" />
+        <AppButton title="Browse Restaurants" onPress={() => navigation.navigate('Home')} />
+      </Screen>
+    );
+
   return (
-    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
-      <View style={[s.inner, { paddingTop: insets.top + 16 }]}>
-        <Text style={s.title}>Checkout{groups.length > 1 ? ` • ${groups.length} restaurants, one payment` : ''}</Text>
+    <Screen padded={false}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 16 }} showsVerticalScrollIndicator={false}>
+        <AppText variant="title" style={{ marginBottom: 12 }}>
+          Checkout{groups.length > 1 ? ` • ${groups.length} restaurants, one payment` : ''}
+        </AppText>
         {groups.map((g) => (
-          <View key={g.restaurantId} style={s.card}>
-            <Text style={{ fontWeight: '800', color: '#FF6B35' }}>{g.restaurantName}</Text>
-            {g.items.map((i: any) => <Text key={i._id} style={s.line}>{i.name} × {i.quantity} = ₹{i.price * i.quantity}</Text>)}
-            <View style={s.row}><Text style={{ color: '#666' }}>Subtotal ({g.restaurantName})</Text><Text>₹{g.subtotal}</Text></View>
-          </View>
+          <AppCard key={g.restaurantId}>
+            <AppText variant="subheading" tone="primary">
+              {g.restaurantName}
+            </AppText>
+            {g.items.map((i: any) => (
+              <AppText key={i._id} variant="body" style={{ paddingVertical: 2 }}>
+                {i.name} × {i.quantity} = ₹{i.price * i.quantity}
+              </AppText>
+            ))}
+            <AppText variant="body" tone="muted" style={{ marginTop: 4 }}>
+              Subtotal ({g.restaurantName}): ₹{g.subtotal}
+            </AppText>
+          </AppCard>
         ))}
-        <View style={s.card}>
-          <View style={s.row}><Text>Subtotal</Text><Text>₹{subtotal}</Text></View>
-          <View style={s.row}><Text>Tax 5%</Text><Text>₹{tax}</Text></View>
-          <View style={s.row}><Text style={{ fontWeight: '800' }}>Total (one payment)</Text><Text style={{ fontWeight: '800', color: '#FF6B35' }}>₹{total}</Text></View>
-          <Text style={{ fontSize: 11, color: '#666', marginTop: 8 }}>Backend splits this across restaurants and keeps the platform fee — never trusts frontend totals.</Text>
-        </View>
-        <View style={s.card}>
-          <Text style={{ fontWeight: '700' }}>Payment split</Text>
+        <AppCard>
+          <SummaryRow label="Subtotal" value={`₹${subtotal}`} />
+          <SummaryRow label="Tax 5%" value={`₹${tax}`} />
+          <Divider style={{ marginVertical: 8 }} />
+          <SummaryRow label="Total (one payment)" value={`₹${total}`} bold accent />
+          <AppText variant="caption" tone="muted" style={{ marginTop: 8 }}>
+            Backend splits this across restaurants and keeps the platform fee — never trusts frontend totals.
+          </AppText>
+        </AppCard>
+        <AppCard>
+          <AppText variant="bodyBold">Payment split</AppText>
           {payees.map((p: any, idx: number) => (
-            <Text key={idx} style={{ color: p?.payoutEnabled ? '#666' : '#B45309', fontSize: 12, marginTop: 4 }}>
-              {p ? (p.payoutEnabled ? `• ${p.restaurantName}: settles to ${p.payoutMode === 'UPI' && p.payoutUpiId ? `UPI ${p.payoutUpiId}` : p.payoutBankName || 'bank account'}` : `• ⚠️ ${p.restaurantName} payouts not configured`) : '• Verifying…'}
-            </Text>
+            <List.Item
+              key={idx}
+              title={p ? (p.payoutEnabled ? `${p.restaurantName}: settles to ${p.payoutMode === 'UPI' && p.payoutUpiId ? `UPI ${p.payoutUpiId}` : p.payoutBankName || 'bank account'}` : `${p.restaurantName}: payouts not configured`) : 'Verifying…'}
+              titleStyle={{ fontSize: 12, color: p?.payoutEnabled === false ? theme.colors.error : theme.colors.onSurfaceVariant }}
+              left={(props) => <List.Icon {...props} icon={p?.payoutEnabled === false ? 'alert' : 'check-circle'} />}
+              style={{ paddingVertical: 0, paddingLeft: 0 }}
+            />
           ))}
-        </View>
-        <TouchableOpacity style={[s.btn, loading && { opacity: 0.6 }]} onPress={pay} disabled={loading}>
-          <Text style={s.btnText}>{loading ? 'Processing…' : `Pay ₹${total}`}</Text>
-        </TouchableOpacity>
-        <Text style={{ fontSize: 11, color: '#666', marginTop: 8, textAlign: 'center' }}>UPI • Cards • Netbanking — stays inside the app</Text>
-      </View>
-    </ScrollView>
+        </AppCard>
+        <AppButton title={loading ? 'Processing…' : `Pay ₹${total}`} onPress={pay} loading={loading} style={{ marginTop: 8 }} />
+        <AppText variant="caption" tone="muted" style={{ marginTop: 8, textAlign: 'center' }}>
+          UPI • Cards • Netbanking — stays inside the app
+        </AppText>
+      </ScrollView>
+    </Screen>
   );
 }
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF8F5' },
-  inner: { padding: 16 },
-  title: { fontSize: 20, fontWeight: '800', marginBottom: 12 },
-  card: { backgroundColor: 'white', padding: 16, borderRadius: 14, marginBottom: 12 },
-  line: { paddingVertical: 2 },
-  divider: { height: 1, backgroundColor: '#FFE8DE', marginVertical: 8 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 },
-  btn: { backgroundColor: '#FF6B35', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
-  btnText: { color: 'white', fontWeight: '800' }
-});
+
+function SummaryRow({ label, value, bold = false, accent = false }: { label: string; value: string; bold?: boolean; accent?: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 }}>
+      <AppText variant={bold ? 'bodyBold' : 'body'}>{label}</AppText>
+      <AppText variant={bold ? 'bodyBold' : 'body'} tone={accent ? 'primary' : 'text'}>
+        {value}
+      </AppText>
+    </View>
+  );
+}

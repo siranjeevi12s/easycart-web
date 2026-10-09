@@ -1,19 +1,35 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { Icon, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, BASE_URL } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { io } from 'socket.io-client';
 import QRCode from 'react-native-qrcode-svg';
+import { Screen } from '../components/Screen';
+import { AppText } from '../components/AppText';
+import { AppCard } from '../components/AppCard';
+import { LoadingView } from '../components/LoadingView';
+import { palette } from '../theme/tokens';
+import { useAppThemeMode } from '../theme/ThemeContext';
 
 const steps = ['PAID', 'ACCEPTED', 'PREPARING', 'READY', 'PICKED_UP'] as const;
+const stepHelp: Record<string, string> = {
+  PAID: 'Payment verified',
+  ACCEPTED: 'Restaurant accepted',
+  PREPARING: 'Being prepared',
+  READY: 'Collect without waiting',
+  PICKED_UP: 'Enjoy your meal',
+};
 
 export default function OrderTracking({ route }: any) {
+  const theme = useTheme();
+  const { mode } = useAppThemeMode();
+  const p = palette[mode];
   const insets = useSafeAreaInsets();
   const { orderId } = route.params;
   const [order, setOrder] = useState<any>(null);
   const [qr, setQr] = useState<any>(null);
-  const [socket, setSocket] = useState<any>(null);
 
   const load = useCallback(async () => {
     try {
@@ -32,78 +48,114 @@ export default function OrderTracking({ route }: any) {
     (async () => {
       const token = await AsyncStorage.getItem('token');
       sock = io(BASE_URL, { auth: { token }, transports: ['websocket', 'polling'] });
-      const customerId = (await AsyncStorage.getItem('user')) ? JSON.parse(await AsyncStorage.getItem('user') || '{}').id || JSON.parse(await AsyncStorage.getItem('user') || '{}')._id : null;
+      const raw = await AsyncStorage.getItem('user');
+      const customerId = raw ? JSON.parse(raw).id || JSON.parse(raw)._id : null;
       if (customerId) sock.emit('join:customer', customerId);
       sock.on('order:update', (o: any) => { if (o._id === orderId) setOrder(o); });
       sock.on('order:ready', (o: any) => { if (o._id === orderId) setOrder(o); });
-      setSocket(sock);
     })();
     const interval = setInterval(load, 5000);
     return () => { clearInterval(interval); sock?.disconnect(); };
   }, [orderId, load]);
 
-  if (!order) return <View style={[s.center, { paddingTop: insets.top + 16 }]}><ActivityIndicator color="#FF6B35" /></View>;
+  if (!order) return <LoadingView />;
 
   const idx = steps.indexOf(order.orderStatus);
-  const isReady = order.orderStatus === 'READY';
-  const isPicked = order.orderStatus === 'PICKED_UP';
+  const bannerKind = order.orderStatus === 'READY' ? 'success' : order.orderStatus === 'PICKED_UP' ? 'info' : 'warning';
+  const bannerBg = bannerKind === 'success' ? p.successSoft : bannerKind === 'info' ? p.infoSoft : p.primarySoft;
+  const bannerFg = bannerKind === 'success' ? p.success : bannerKind === 'info' ? p.info : p.primary;
+  const bannerText =
+    order.orderStatus === 'READY'
+      ? 'Your food is READY! Please visit the restaurant for pickup.'
+      : order.orderStatus === 'PICKED_UP'
+        ? 'Picked up — Enjoy your meal!'
+        : 'Please wait until your order is READY before coming.';
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }}>
-      <Text style={s.orderNo}>Order {order.orderNumber}</Text>
-      <Text style={s.sub}>{new Date(order.createdAt).toLocaleString()} • ₹{order.totalAmount}</Text>
+    <Screen padded={false}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 16 }} showsVerticalScrollIndicator={false}>
+        <AppText variant="title">Order {order.orderNumber}</AppText>
+        <AppText variant="caption" tone="muted">
+          {new Date(order.createdAt).toLocaleString()} • ₹{order.totalAmount}
+        </AppText>
 
-      <View style={[s.banner, { backgroundColor: isReady ? '#DCFCE7' : isPicked ? '#E0E7FF' : '#FFF2EC' }]}>
-        <Text style={s.bannerTitle}>
-          {isReady ? '✅ Your food is READY! Please visit the restaurant for pickup.' : isPicked ? '🎉 Picked up — Enjoy your meal!' : '⏳ Please wait until your order is READY before coming.'}
-        </Text>
-        <Text style={{ color: '#666', fontSize: 12, marginTop: 4 }}>Real-time via Socket.IO — no paid push needed in MVP</Text>
-      </View>
-
-      <View style={s.timeline}>
-        {steps.map((step, i) => {
-          const done = i <= idx && order.orderStatus !== 'PENDING_PAYMENT';
-          const current = i === idx;
-          return (
-            <View key={step} style={s.stepRow}>
-              <View style={[s.dot, done ? s.dotDone : s.dotTodo, current && s.dotCurrent]}><Text style={{ color: done ? 'white' : '#999', fontSize: 10 }}>{done ? '✓' : '○'}</Text></View>
-              <View style={{ flex: 1 }}><Text style={[s.stepLabel, done && { fontWeight: '700' }]}>{step}</Text><Text style={s.stepDesc}>{step === 'PAID' ? 'Payment verified' : step === 'READY' ? 'Collect without waiting' : ''}</Text></View>
-            </View>
-          );
-        })}
-      </View>
-
-      <View style={s.card}>
-        <Text style={{ fontWeight: '700', marginBottom: 8 }}>Items (snapshot pricing)</Text>
-        {order.items.map((it: any) => <Text key={it.name} style={s.itemLine}>{it.quantity} × {it.name} @ ₹{it.price} = ₹{it.subtotal}</Text>)}
-        <Text style={{ fontWeight: '800', marginTop: 8 }}>Total ₹{order.totalAmount} • {order.paymentStatus}</Text>
-      </View>
-
-      {qr && (
-        <View style={s.qrCard}>
-          <Text style={{ fontWeight: '700', textAlign: 'center' }}>Pickup QR • Show at counter</Text>
-          <Text style={{ textAlign: 'center', color: '#666', fontSize: 12 }}>{order.orderNumber}</Text>
-          <View style={{ alignItems: 'center', marginTop: 12 }}>
-            <QRCode value={qr.data || order.orderNumber} size={160} />
+        <View style={{ padding: 14, borderRadius: 12, marginTop: 12, backgroundColor: bannerBg, flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+          <Icon source={bannerKind === 'success' ? 'check-circle' : bannerKind === 'info' ? 'party-popper' : 'clock-outline'} size={28} color={bannerFg} />
+          <View style={{ flex: 1 }}>
+            <AppText variant="bodyBold" style={{ color: bannerFg }}>
+              {bannerText}
+            </AppText>
+            <AppText variant="caption" tone="muted" style={{ marginTop: 2 }}>
+              Real-time via Socket.IO — no paid push needed in MVP
+            </AppText>
           </View>
-          <View style={{ backgroundColor: '#1A1A1A', padding: 10, borderRadius: 8, marginTop: 12 }}><Text style={{ color: 'white', textAlign: 'center', fontWeight: '700', letterSpacing: 1 }}>{order.orderNumber}</Text></View>
-          <Text style={{ textAlign: 'center', color: '#666', fontSize: 11, marginTop: 8 }}>Restaurant can scan QR or enter code manually. Backend verifies: exists, paid, READY, belongs to restaurant, not already picked up.</Text>
         </View>
-      )}
-    </ScrollView>
+
+        <AppCard style={{ marginTop: 12 }}>
+          {steps.map((step, i) => {
+            const done = i <= idx && order.orderStatus !== 'PENDING_PAYMENT';
+            const current = i === idx;
+            return (
+              <View key={step} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8 }} accessible accessibilityLabel={`${step}${done ? ', done' : ''}${current ? ', current' : ''}`}>
+                <View
+                  style={{
+                    width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 12,
+                    backgroundColor: done ? p.success : theme.colors.surfaceVariant,
+                    borderWidth: current && !done ? 2 : done ? 0 : 1,
+                    borderColor: current && !done ? p.primary : p.border,
+                  }}
+                >
+                  <Icon source={done ? 'check' : 'circle-outline'} size={14} color={done ? '#FFFFFF' : p.faint} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <AppText variant={done ? 'bodyBold' : 'body'}>{step}</AppText>
+                  {!!stepHelp[step] && (
+                    <AppText variant="caption" tone="muted">
+                      {stepHelp[step]}
+                    </AppText>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </AppCard>
+
+        <AppCard style={{ marginTop: 0 }}>
+          <AppText variant="bodyBold" style={{ marginBottom: 8 }}>
+            Items (snapshot pricing)
+          </AppText>
+          {order.items.map((it: any) => (
+            <AppText key={it.name} variant="body" tone="muted" style={{ paddingVertical: 2 }}>
+              {it.quantity} × {it.name} @ ₹{it.price} = ₹{it.subtotal}
+            </AppText>
+          ))}
+          <AppText variant="bodyBold" style={{ marginTop: 8 }}>
+            Total ₹{order.totalAmount} • {order.paymentStatus}
+          </AppText>
+        </AppCard>
+
+        {qr && (
+          <AppCard style={{ alignItems: 'stretch' }}>
+            <AppText variant="bodyBold" style={{ textAlign: 'center' }}>
+              Pickup QR • Show at counter
+            </AppText>
+            <AppText variant="caption" tone="muted" style={{ textAlign: 'center' }}>
+              {order.orderNumber}
+            </AppText>
+            <View style={{ alignItems: 'center', marginTop: 12 }}>
+              <QRCode value={qr.data || order.orderNumber} size={160} />
+            </View>
+            <View style={{ backgroundColor: '#1A1A1A', padding: 10, borderRadius: 8, marginTop: 12 }}>
+              <AppText variant="bodyBold" tone="onPrimary" style={{ textAlign: 'center', letterSpacing: 1 }}>
+                {order.orderNumber}
+              </AppText>
+            </View>
+            <AppText variant="caption" tone="muted" style={{ textAlign: 'center', marginTop: 8 }}>
+              Restaurant can scan QR or enter code manually. Backend verifies: exists, paid, READY, belongs to restaurant, not already picked up.
+            </AppText>
+          </AppCard>
+        )}
+      </ScrollView>
+    </Screen>
   );
 }
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF8F5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  orderNo: { fontSize: 20, fontWeight: '800' }, sub: { color: '#666', fontSize: 12 },
-  banner: { padding: 14, borderRadius: 12, marginTop: 12 }, bannerTitle: { fontWeight: '700' },
-  timeline: { backgroundColor: 'white', borderRadius: 14, padding: 16, marginTop: 12 },
-  stepRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
-  dot: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  dotDone: { backgroundColor: '#22C55E' }, dotTodo: { backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' }, dotCurrent: { borderWidth: 2, borderColor: '#FF6B35' },
-  stepLabel: { fontWeight: '600' }, stepDesc: { color: '#666', fontSize: 11 },
-  card: { backgroundColor: 'white', padding: 14, borderRadius: 14, marginTop: 12 },
-  itemLine: { paddingVertical: 2, color: '#333' },
-  qrCard: { backgroundColor: 'white', padding: 16, borderRadius: 16, marginTop: 12, alignItems: 'stretch' }
-});

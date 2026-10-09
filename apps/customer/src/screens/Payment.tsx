@@ -1,9 +1,13 @@
 import { useContext, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Linking } from 'react-native';
+import { View, Alert, Linking } from 'react-native';
+import { ActivityIndicator, Appbar, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { api } from '../services/api';
 import { CartContext } from '../context/AppContext';
+import { AppText } from '../components/AppText';
+import { AppButton } from '../components/AppButton';
+import { EmptyState } from '../components/EmptyState';
 
 const CALLBACK_PREFIX = 'easycart://payment-callback';
 // UPI + wallet app schemes — intercepted so Android shows the app chooser
@@ -21,6 +25,7 @@ function parseQuery(url: string): Record<string, string> {
 }
 
 export default function PaymentScreen({ route, navigation }: any) {
+  const theme = useTheme();
   const { checkoutUrl, orderId, orderIds: routeOrderIds, batchId } = route.params || {};
   // Sibling orders covered by this one payment (multi-seller batch)
   const batchIds: string[] = Array.isArray(routeOrderIds) && routeOrderIds.length
@@ -43,7 +48,7 @@ export default function PaymentScreen({ route, navigation }: any) {
     stopPolling();
     clearCart();
     navigation.replace('OrderTracking', { orderId: batchIds[0], orderIds: batchIds, batchId });
-    if (orderNumber) Alert.alert('Payment Success ✅', `Order${batchIds.length > 1 ? `s (${batchIds.length})` : ` ${orderNumber}`} confirmed. Restaurants will prepare.`);
+    if (orderNumber) Alert.alert('Payment Success', `Order${batchIds.length > 1 ? `s (${batchIds.length})` : ` ${orderNumber}`} confirmed. Restaurants will prepare.`);
   };
 
   // Webhook may confirm even if the deep-link return is missed — poll as backup
@@ -131,30 +136,38 @@ export default function PaymentScreen({ route, navigation }: any) {
   };
 
   if (!checkoutUrl || !batchIds.length) {
-    return <View style={s.center}><Text>Invalid payment session.</Text></View>;
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: theme.colors.background }}>
+        <EmptyState icon="alert-circle" message="Invalid payment session." />
+      </View>
+    );
   }
 
   return (
-    <View style={[s.container, { paddingTop: insets.top }]}>
-      <View style={s.secureBar}>
-        <Text style={s.secureText}>🔒 Secured by Razorpay • UPI • Cards • Netbanking</Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
+      <Appbar.Header elevated={false} style={{ backgroundColor: theme.colors.primaryContainer }}>
+        <AppText variant="captionBold" tone="primary" style={{ textAlign: 'center', flex: 1 }}>
+          Secured by Razorpay • UPI • Cards • Netbanking
+        </AppText>
+      </Appbar.Header>
       {(verifying) && (
-        <View style={s.overlay}>
-          <ActivityIndicator size="large" color="#FF6B35" />
-          <Text style={{ marginTop: 8, fontWeight: '700' }}>Confirming payment…</Text>
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.9)', zIndex: 10 }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <AppText variant="bodyBold" style={{ marginTop: 8 }}>
+            Confirming payment…
+          </AppText>
         </View>
       )}
       {failed ? (
-        <View style={s.center}>
-          <Text style={{ fontWeight: '800', fontSize: 16, marginBottom: 8 }}>Payment not completed</Text>
-          <Text style={{ color: '#666', textAlign: 'center', paddingHorizontal: 24 }}>{failed}</Text>
-          <TouchableOpacity style={s.btn} onPress={() => { setFailed(null); webRef.current?.reload(); }}>
-            <Text style={s.btnText}>Retry payment</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[s.btn, s.ghostBtn]} onPress={() => navigation.goBack()}>
-            <Text style={s.ghostText}>Back to checkout</Text>
-          </TouchableOpacity>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <AppText variant="heading" style={{ marginBottom: 8 }}>
+            Payment not completed
+          </AppText>
+          <AppText variant="body" tone="muted" style={{ textAlign: 'center' }}>
+            {failed}
+          </AppText>
+          <AppButton title="Retry payment" onPress={() => { setFailed(null); webRef.current?.reload(); }} style={{ marginTop: 16, minWidth: 200 }} />
+          <AppButton title="Back to checkout" variant="outline" onPress={() => navigation.goBack()} style={{ marginTop: 8, minWidth: 200 }} />
         </View>
       ) : (
         <WebView
@@ -164,7 +177,12 @@ export default function PaymentScreen({ route, navigation }: any) {
           domStorageEnabled
           startInLoadingState
           renderLoading={() => (
-            <View style={s.center}><ActivityIndicator size="large" color="#FF6B35" /><Text style={{ marginTop: 8, color: '#666' }}>Loading secure checkout…</Text></View>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <AppText variant="body" tone="muted" style={{ marginTop: 8 }}>
+                Loading secure checkout…
+              </AppText>
+            </View>
           )}
           onShouldStartLoadWithRequest={(req) => handleUrl(req.url)}
           onNavigationStateChange={(nav) => { if (!nav.loading) handleUrl(nav.url); }}
@@ -176,15 +194,3 @@ export default function PaymentScreen({ route, navigation }: any) {
     </View>
   );
 }
-
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'white' },
-  secureBar: { backgroundColor: '#FFF2EC', padding: 8, alignItems: 'center' },
-  secureText: { fontSize: 12, color: '#9A3412', fontWeight: '600' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' },
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.9)', zIndex: 10 },
-  btn: { backgroundColor: '#FF6B35', padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 16, minWidth: 200 },
-  btnText: { color: 'white', fontWeight: '800' },
-  ghostBtn: { backgroundColor: 'white', borderWidth: 1, borderColor: '#FF6B35' },
-  ghostText: { color: '#FF6B35', fontWeight: '800' },
-});

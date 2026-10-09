@@ -1,43 +1,57 @@
-import { useState, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from 'react-native-paper';
 import { api } from '../services/api';
 import { AuthContext } from '../context/AppContext';
+import { useContext } from 'react';
+import { Screen } from '../components/Screen';
+import { AppText } from '../components/AppText';
+import { AppButton } from '../components/AppButton';
+import { AppTextField } from '../components/AppTextField';
+import { AppCard } from '../components/AppCard';
 
 export default function Login({ navigation }: any) {
+  const theme = useTheme();
   const [email, setEmail] = useState('customer@test.com');
   const [password, setPassword] = useState('password123');
+  const [busy, setBusy] = useState(false);
   const { setUser } = useContext(AuthContext);
+
   const submit = async () => {
+    if (!email.trim() || !password) return Alert.alert('Validation', 'Email and password required');
+    setBusy(true);
     try {
-      const { data } = await api.post('/auth/login', { email, password });
+      const { data } = await api.post('/auth/login', { email: email.trim(), password });
       await AsyncStorage.setItem('token', data.token);
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
       setUser(data.user);
     } catch (e: any) {
       Alert.alert('Login failed', e.response?.data?.message || 'Error');
+    } finally {
+      setBusy(false);
     }
   };
+
   return (
-    <View style={s.container}>
-      <Text style={s.title}>Welcome back 👋</Text>
-      <Text style={s.sub}>Pre-order • Pay • Pick up without waiting</Text>
-      <TextInput style={s.input} placeholder="Email" value={email} onChangeText={setEmail} autoCapitalize="none" />
-      <TextInput style={s.input} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
-      <TouchableOpacity style={s.btn} onPress={submit}><Text style={s.btnText}>Login</Text></TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate('Register')}><Text style={s.link}>No account? Register</Text></TouchableOpacity>
-      <View style={s.hint}><Text style={s.hintText}>Demo: customer@test.com / password123</Text></View>
-    </View>
+    <Screen>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'center' }}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+          <AppText variant="title">Welcome back</AppText>
+          <AppText variant="body" tone="muted" style={{ marginBottom: 20 }}>
+            Pre-order • Pay • Pick up without waiting
+          </AppText>
+          <AppTextField label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          <AppTextField label="Password" value={password} onChangeText={setPassword} secure />
+          <AppButton title="Login" onPress={submit} loading={busy} style={{ marginTop: 4 }} />
+          <AppButton title="No account? Register" variant="text" onPress={() => navigation.navigate('Register')} style={{ marginTop: 4 }} />
+          <AppCard outlined style={{ marginTop: 12, backgroundColor: theme.colors.primaryContainer }}>
+            <AppText variant="caption" tone="primary" style={{ textAlign: 'center' }}>
+              Demo: customer@test.com / password123
+            </AppText>
+          </AppCard>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Screen>
   );
 }
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF8F5', padding: 24, justifyContent: 'center' },
-  title: { fontSize: 26, fontWeight: '700' },
-  sub: { color: '#666', marginBottom: 20 },
-  input: { backgroundColor: 'white', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#FFE8DE' },
-  btn: { backgroundColor: '#FF6B35', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
-  btnText: { color: 'white', fontWeight: '700', fontSize: 16 },
-  link: { textAlign: 'center', color: '#FF6B35', marginTop: 12, fontWeight: '600' },
-  hint: { backgroundColor: '#FFF2EC', padding: 12, borderRadius: 10, marginTop: 16 },
-  hintText: { color: '#FF6B35', textAlign: 'center', fontSize: 12 }
-});

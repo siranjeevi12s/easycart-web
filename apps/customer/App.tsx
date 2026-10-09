@@ -1,12 +1,15 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View, ActivityIndicator, Alert, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { useTheme, Icon } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { io } from 'socket.io-client';
 import { BASE_URL } from './src/services/api';
+import { AppThemeProvider, useNavTheme } from './src/theme/ThemeContext';
+import { AppText } from './src/components/AppText';
 
 import SplashScreen from './src/screens/Splash';
 import LoginScreen from './src/screens/Login';
@@ -24,13 +27,29 @@ import { AuthContext, CartContext } from './src/context/AppContext';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+const TAB_ICONS: Record<string, string> = {
+  Home: 'home',
+  Cart: 'cart',
+  Orders: 'package-variant',
+  Profile: 'account',
+};
+
 function Tabs() {
+  const theme = useTheme();
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: '#FF6B35' }}>
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarIcon: () => <Text>🏠</Text> }} />
-      <Tab.Screen name="Cart" component={CartScreen} options={{ tabBarIcon: () => <Text>🛒</Text> }} />
-      <Tab.Screen name="Orders" component={OrderHistoryScreen} options={{ tabBarIcon: () => <Text>📦</Text> }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: () => <Text>👤</Text> }} />
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
+        tabBarStyle: { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outline },
+        tabBarIcon: ({ color, size }) => <Icon source={TAB_ICONS[route.name] || 'circle'} size={size} color={color} />,
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Cart" component={CartScreen} />
+      <Tab.Screen name="Orders" component={OrderHistoryScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
@@ -42,6 +61,8 @@ function InnerApp() {
   const [readyNoti, setReadyNoti] = useState<any | null>(null);
   const navigationRef = useRef<any>(null);
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
+  const navTheme = useNavTheme();
 
   useEffect(() => {
     (async () => {
@@ -63,7 +84,7 @@ function InnerApp() {
       socket.emit('join:customer', customerId);
       socket.on('order:ready', (order: any) => {
         setReadyNoti(order);
-        Alert.alert('🎉 Order Ready!', `Order ${order.orderNumber} is READY for pickup — please visit the restaurant.`, [
+        Alert.alert('Order Ready!', `Order ${order.orderNumber} is READY for pickup — please visit the restaurant.`, [
           { text: 'Track', onPress: () => navigationRef.current?.navigate('OrderTracking', { orderId: order._id }) },
           { text: 'OK' },
         ]);
@@ -99,16 +120,31 @@ function InnerApp() {
   };
   const clearCart = () => setCart({ restaurantId: null, items: [] });
 
-  if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color="#FF6B35" /></View>;
+  if (loading)
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>
       <CartContext.Provider value={{ cart, addToCart, clearCart, setCart }}>
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer ref={navigationRef} theme={navTheme}>
           {readyNoti && (
-            <TouchableOpacity style={[s.readyBanner, { paddingTop: insets.top + 12 }]} activeOpacity={0.9} onPress={() => navigationRef.current?.navigate('OrderTracking', { orderId: readyNoti._id })}>
-              <Text style={s.readyTitle}>✅ Order {readyNoti.orderNumber} is READY!</Text>
-              <Text style={s.readySub}>Tap to track • Please visit restaurant for pickup</Text>
+            <TouchableOpacity
+              style={{ backgroundColor: '#16A34A', padding: 12, alignItems: 'center', paddingTop: insets.top + 12 }}
+              activeOpacity={0.9}
+              onPress={() => navigationRef.current?.navigate('OrderTracking', { orderId: readyNoti._id })}
+              accessibilityRole="button"
+              accessibilityLabel={`Order ${readyNoti.orderNumber} is ready, tap to track`}
+            >
+              <AppText variant="bodyBold" tone="onPrimary">
+                Order {readyNoti.orderNumber} is READY!
+              </AppText>
+              <AppText variant="caption" tone="onPrimary">
+                Tap to track • Please visit restaurant for pickup
+              </AppText>
             </TouchableOpacity>
           )}
           <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -134,16 +170,12 @@ function InnerApp() {
   );
 }
 
-const s = StyleSheet.create({
-  readyBanner: { backgroundColor: '#22c55e', padding: 12, alignItems: 'center' },
-  readyTitle: { color: 'white', fontWeight: '800', fontSize: 14 },
-  readySub: { color: 'white', fontSize: 11, opacity: 0.9, marginTop: 2 },
-});
-
 function App() {
   return (
     <SafeAreaProvider>
-      <InnerApp />
+      <AppThemeProvider>
+        <InnerApp />
+      </AppThemeProvider>
     </SafeAreaProvider>
   );
 }

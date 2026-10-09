@@ -1,47 +1,60 @@
-import { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState, useCallback } from 'react';
+import { FlatList, RefreshControl, View } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../services/api';
+import { Screen } from '../components/Screen';
+import { AppText } from '../components/AppText';
+import { AppCard } from '../components/AppCard';
+import { StatusChip } from '../components/StatusChip';
+import { EmptyState } from '../components/EmptyState';
+import { LoadingView } from '../components/LoadingView';
 
 export default function OrderHistory({ navigation }: any) {
-  const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const load = async () => {
-    setLoading(true);
-    const { data } = await api.get('/orders');
-    setOrders(data);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const { data } = await api.get('/orders');
+      setOrders(Array.isArray(data) ? data : []);
+    } catch {}
     setLoading(false);
+    setRefreshing(false);
   };
   useFocusEffect(useCallback(() => { load(); }, []));
-  if (loading) return <View style={[s.center, { paddingTop: insets.top + 16 }]}><ActivityIndicator color="#FF6B35" /></View>;
+
+  if (loading) return <LoadingView message="Loading orders…" />;
+
   return (
-    <View style={[s.container, { paddingTop: insets.top + 16 }]}>
-      <Text style={s.title}>Order History</Text>
+    <Screen>
+      <AppText variant="title" style={{ marginBottom: 12 }}>
+        Order History
+      </AppText>
       <FlatList
         data={orders}
         keyExtractor={(i) => i._id}
-        contentContainerStyle={{ paddingBottom: 20 + insets.bottom }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} colors={[theme.colors.primary]} />}
+        ListEmptyComponent={<EmptyState icon="package-variant" message="No orders yet." hint="Search a restaurant and pre-order!" />}
         renderItem={({ item }) => (
-          <TouchableOpacity style={s.card} onPress={() => navigation.navigate('OrderTracking', { orderId: item._id })}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontWeight: '700' }}>{item.orderNumber}</Text>
-              <Text style={[s.badge, { backgroundColor: item.orderStatus === 'READY' ? '#DCFCE7' : item.orderStatus === 'PICKED_UP' ? '#E0E7FF' : '#FFF2EC' }]}>{item.orderStatus}</Text>
+          <AppCard onPress={() => navigation.navigate('OrderTracking', { orderId: item._id })} accessibilityLabel={`Order ${item.orderNumber}, ${item.orderStatus}`}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <AppText variant="bodyBold">{item.orderNumber}</AppText>
+              <StatusChip status={item.orderStatus} />
             </View>
-            <Text style={{ color: '#666', fontSize: 12 }}>{new Date(item.createdAt).toLocaleString()} • ₹{item.totalAmount}</Text>
-            <Text style={{ marginTop: 6 }} numberOfLines={1}>{item.items.map((it: any) => `${it.quantity}× ${it.name}`).join(', ')}</Text>
-          </TouchableOpacity>
+            <AppText variant="caption" tone="muted" style={{ marginTop: 4 }}>
+              {new Date(item.createdAt).toLocaleString()} • ₹{item.totalAmount}
+            </AppText>
+            <AppText variant="body" style={{ marginTop: 6 }} numberOfLines={1}>
+              {item.items.map((it: any) => `${it.quantity}× ${it.name}`).join(', ')}
+            </AppText>
+          </AppCard>
         )}
-        ListEmptyComponent={<Text style={{ textAlign: 'center', color: '#666', marginTop: 30 }}>No orders yet. Search a restaurant and pre-order!</Text>}
       />
-    </View>
+    </Screen>
   );
 }
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF8F5', padding: 16 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 20, fontWeight: '800', marginBottom: 12 },
-  card: { backgroundColor: 'white', padding: 14, borderRadius: 12, marginBottom: 8 },
-  badge: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20, overflow: 'hidden' }
-});

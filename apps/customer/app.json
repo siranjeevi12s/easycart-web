@@ -23,7 +23,10 @@
       "bundler": "metro"
     },
     "extra": {
-      "apiUrl": "http://10.37.96.145:5000"
+      "apiUrl": "https://easycart-g6end7e0c8hkhwe4.eastasia-01.azurewebsites.net",
+      "eas": {
+        "projectId": "7f11a2b2-f68a-4642-880c-6227dcfeb190"
+      }
     }
   }
 }
