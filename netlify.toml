@@ -9,7 +9,7 @@
 # Azure backend. Without this every data call 404s on Netlify.
 [[redirects]]
   from = "/api/*"
-  to = "https://easycart-g6end7e0c8hkhwe4.eastasia-01.azurewebsites.net/api/:splat"
+  to = "xxxxxxxxxxxx"
   status = 200
   force = true
 
