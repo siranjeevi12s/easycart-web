@@ -1,0 +1,11 @@
+# Security headers for the admin console (shipped inside dist).
+# Note: no `script-src` CSP here — MUI/Emotion needs runtime inline styles,
+# and a wrong CSP would blank-screen the app. The headers below block
+# clickjacking, MIME sniffing, and lock down referrer/permissions.
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

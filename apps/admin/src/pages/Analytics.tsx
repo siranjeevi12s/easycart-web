@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Box, Grid, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Area, AreaChart, Bar, BarChart, Brush, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { apiGet } from '../services/api';
+import { apiGet, getApiErrorMessage } from '../services/api';
 import { ErrorState, LoadingSkeleton, PageHeader } from '../components/ui';
 import { ChartTooltip, SeriesToggle } from '../components/charts';
 import { brand } from '../theme';
@@ -16,10 +16,10 @@ export default function Analytics() {
   const [range, setRange] = useState<Range>(30);
   const [countSeries, setCountSeries] = useState<string[]>(['orders']);
   const [regSeries, setRegSeries] = useState<string[]>(['customers', 'restaurants']);
-  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['stats'], queryFn: apiGet.stats });
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['stats'], queryFn: apiGet.stats });
 
   if (isLoading) return <LoadingSkeleton rows={6} />;
-  if (isError || !data) return <ErrorState message="Failed to load analytics." onRetry={refetch} />;
+  if (isError || !data) return <ErrorState message={getApiErrorMessage(error, 'Failed to load analytics.')} onRetry={() => refetch()} />;
 
   const orders = sliceDays(data.ordersByDay || [], range);
   const regs = (() => {

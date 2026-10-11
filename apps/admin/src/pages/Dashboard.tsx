@@ -3,7 +3,7 @@ import { Box, Grid, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Area, AreaChart, Bar, BarChart, Brush, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiGet } from '../services/api';
+import { apiGet, getApiErrorMessage } from '../services/api';
 import { PageHeader, StatCard, LoadingSkeleton, ErrorState } from '../components/ui';
 import { ChartTooltip, SeriesToggle } from '../components/charts';
 import { brand } from '../theme';
@@ -13,13 +13,14 @@ const PIE_COLORS = [brand.primary, '#22c55e', '#f59e0b', '#3b82f6', '#ef4444', '
 
 export default function Dashboard() {
   const nav = useNavigate();
-  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['stats'], queryFn: apiGet.stats });
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['stats'], queryFn: apiGet.stats });
   const [flowSeries, setFlowSeries] = useState<string[]>(['orders', 'gmv']);
   const [regSeries, setRegSeries] = useState<string[]>(['customers', 'restaurants']);
   const [pieActive, setPieActive] = useState<number | undefined>(undefined);
 
   if (isLoading) return <LoadingSkeleton rows={8} />;
-  if (isError || !data) return <ErrorState message="Failed to load platform stats." onRetry={refetch} />;
+  if (isError || !data)
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load platform stats.')} onRetry={() => refetch()} />;
 
   return (
     <Box>

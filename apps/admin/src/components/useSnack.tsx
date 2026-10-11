@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Alert, Snackbar } from '@mui/material';
+import { getApiErrorMessage } from '../services/api';
 
 export type SnackSev = 'success' | 'error' | 'info' | 'warning';
 
@@ -10,7 +11,7 @@ export function useSnack() {
   const show = useCallback((msg: string, sev: SnackSev = 'success') => setSnack({ open: true, msg, sev }), []);
   const hide = useCallback(() => setSnack((s) => ({ ...s, open: false })), []);
   const fail = useCallback(
-    (e: any, fallback: string) => show(e?.response?.data?.message || fallback, 'error'),
+    (e: unknown, fallback: string) => show(getApiErrorMessage(e, fallback), 'error'),
     [show]
   );
 

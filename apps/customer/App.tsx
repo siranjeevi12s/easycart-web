@@ -9,9 +9,11 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { io } from 'socket.io-client';
 import { BASE_URL, onAuthLost } from './src/services/api';
 import { AppThemeProvider, useNavTheme } from './src/theme/ThemeContext';
+import { SnackProvider } from './src/components/Snackbar';
 import { AppText } from './src/components/AppText';
 
 import SplashScreen from './src/screens/Splash';
+import OnboardingScreen from './src/screens/Onboarding';
 import LoginScreen from './src/screens/Login';
 import RegisterScreen from './src/screens/Register';
 import HomeScreen from './src/screens/Home';
@@ -54,6 +56,8 @@ function Tabs() {
   );
 }
 
+const CART_KEY = 'easycart_cart';
+
 function InnerApp() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -69,9 +73,21 @@ function InnerApp() {
       const token = await AsyncStorage.getItem('token');
       const u = await AsyncStorage.getItem('user');
       if (token && u) setUser(JSON.parse(u));
+      try {
+        const saved = await AsyncStorage.getItem(CART_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && Array.isArray(parsed.items)) setCart(parsed);
+        }
+      } catch {}
       setLoading(false);
     })();
   }, []);
+
+  // Persist cart across sessions (restored above on boot)
+  useEffect(() => {
+    if (!loading) AsyncStorage.setItem(CART_KEY, JSON.stringify(cart)).catch(() => {});
+  }, [cart, loading]);
 
   // Refresh token died (rotated elsewhere / revoked) → drop to login
   useEffect(() => onAuthLost(() => setUser(null)), []);
@@ -154,6 +170,7 @@ function InnerApp() {
             {!user ? (
               <>
                 <Stack.Screen name="Splash" component={SplashScreen} />
+                <Stack.Screen name="Onboarding" component={OnboardingScreen} />
                 <Stack.Screen name="Login" component={LoginScreen} />
                 <Stack.Screen name="Register" component={RegisterScreen} />
               </>
@@ -177,14 +194,12 @@ function App() {
   return (
     <SafeAreaProvider>
       <AppThemeProvider>
-        <InnerApp />
+        <SnackProvider>
+          <InnerApp />
+        </SnackProvider>
       </AppThemeProvider>
     </SafeAreaProvider>
   );
 }
 
 export default App;
-
-// Expo registration — fixes "main has not been registered" when main = App.tsx
-import { registerRootComponent } from 'expo';
-registerRootComponent(App);

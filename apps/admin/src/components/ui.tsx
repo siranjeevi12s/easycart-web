@@ -147,10 +147,15 @@ export function LoadingSkeleton({ rows = 5 }: { rows?: number }) {
     </Box>
   );
 }
-export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+export function ErrorState({ message, onRetry, details }: { message: string; onRetry?: () => void; details?: string }) {
   return (
-    <Alert severity="error" action={onRetry ? <Button size="small" onClick={onRetry}>Retry</Button> : undefined}>
+    <Alert severity="error" role="alert" action={onRetry ? <Button size="small" onClick={onRetry}>Retry</Button> : undefined}>
       {message}
+      {details && import.meta.env.DEV && (
+        <Typography variant="caption" display="block" sx={{ mt: 0.5, opacity: 0.8 }}>
+          {details}
+        </Typography>
+      )}
     </Alert>
   );
 }
