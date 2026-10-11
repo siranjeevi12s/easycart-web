@@ -4,9 +4,11 @@ import { Divider, IconButton, List, Menu, Switch, useTheme } from 'react-native-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { AuthContext } from '../context/AppContext';
+import { AuthContext, CartContext } from '../context/AppContext';
 import { api, clearSession, saveSession } from '../services/api';
 import { useAppThemeMode } from '../theme/ThemeContext';
+import { useSnackbar } from '../components/Snackbar';
+import { getFavDishes, getFavRestaurants, toggleFavDish, type FavDish } from '../utils/favorites';
 import { Screen } from '../components/Screen';
 import { AppText } from '../components/AppText';
 import { AppButton } from '../components/AppButton';
@@ -18,9 +20,11 @@ import { LoadingView } from '../components/LoadingView';
 
 export default function Profile({ navigation }: any) {
   const theme = useTheme();
+  const snack = useSnackbar();
   const { mode, toggle } = useAppThemeMode();
   const insets = useSafeAreaInsets();
   const { user, setUser } = useContext(AuthContext);
+  const { addToCart } = useContext(CartContext);
   const [me, setMe] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,9 +44,35 @@ export default function Profile({ navigation }: any) {
   const [confirmPwd, setConfirmPwd] = useState('');
   const [pwdSaving, setPwdSaving] = useState(false);
 
-  // prefs & addresses
-  const [notifEnabled, setNotifEnabled] = useState(true);
+  // favorites
+  const [favRestIds, setFavRestIds] = useState<string[]>([]);
+  const [favRestNames, setFavRestNames] = useState<Record<string, string>>({});
+  const [favDishes, setFavDishes] = useState<FavDish[]>([]);
+
+  const loadFavs = async () => {
+    const [rids, dishes] = await Promise.all([getFavRestaurants(), getFavDishes()]);
+    setFavRestIds(rids);
+    setFavDishes(dishes);
+    // Resolve names; prune dead restaurant ids quietly
+    const names: Record<string, string> = {};
+    const alive: string[] = [];
+    await Promise.all(
+      rids.map(async (id) => {
+        try {
+          const { data } = await api.get(`/restaurants/${id}`);
+          names[id] = data.name;
+          alive.push(id);
+        } catch {}
+      })
+    );
+    setFavRestNames(names);
+    if (alive.length !== rids.length) {
+      await AsyncStorage.setItem('easycart_fav_restaurants', JSON.stringify(alive));
+      setFavRestIds(alive);
+    }
+  };
   const [addresses, setAddresses] = useState<any[]>([]);
+  const [notifEnabled, setNotifEnabled] = useState(true);
   const [addrOpen, setAddrOpen] = useState(false);
   const [addrLabel, setAddrLabel] = useState('Home');
   const [addrText, setAddrText] = useState('');
@@ -64,8 +94,8 @@ export default function Profile({ navigation }: any) {
     const a = await AsyncStorage.getItem('easycart_addresses');
     if (a) setAddresses(JSON.parse(a));
   };
-  useEffect(() => { loadMe(); loadPrefs(); }, []);
-  useFocusEffect(useCallback(() => { loadMe(); }, []));
+  useEffect(() => { loadMe(); loadPrefs(); loadFavs(); }, []);
+  useFocusEffect(useCallback(() => { loadMe(); loadFavs(); }, []));
 
   const displayUser = me || user;
 
@@ -115,6 +145,24 @@ export default function Profile({ navigation }: any) {
       { text: 'Delete', style: 'destructive', onPress: async () => saveAddresses(addresses.filter((_, i) => i !== idx)) },
     ]);
   const toggleNotif = async (v: boolean) => { setNotifEnabled(v); await AsyncStorage.setItem('pref_notif', String(v)); };
+  const openRestaurant = async (id: string) => {
+    try {
+      const { data } = await api.get(`/restaurants/${id}`);
+      navigation.navigate('Restaurant', { restaurant: data });
+    } catch {
+      snack.show('Restaurant unavailable');
+    }
+  };
+  const addFavDish = (d: FavDish) => {
+    addToCart(d.restaurantId, { _id: d.id, name: d.name, price: d.price, image: d.image }, d.restaurantName);
+    snack.show(`Added ${d.name} ×1`);
+  };
+  const removeFavDish = async (id: string) => {
+    const cur = favDishes.find((d) => d.id === id);
+    if (!cur) return;
+    const { favs } = await toggleFavDish(cur);
+    setFavDishes(favs);
+  };
   const comingSoon = (t: string) => { setMenuOpen(false); setTimeout(() => Alert.alert(t, 'Coming soon!'), 200); };
   const goOrders = () => { setMenuOpen(false); (navigation as any).navigate('Orders'); };
   const openAddrList = () => {
@@ -192,6 +240,44 @@ export default function Profile({ navigation }: any) {
         </AppCard>
 
         <AppText variant="tiny" tone="muted" style={{ marginTop: 8, marginBottom: 4, letterSpacing: 0.5 }}>
+          FAVORITES
+        </AppText>
+        <AppCard>
+          {favRestIds.length === 0 && favDishes.length === 0 ? (
+            <AppText variant="body" tone="muted">
+              Nothing saved yet — tap the heart on any restaurant or dish.
+            </AppText>
+          ) : (
+            <>
+              {favRestIds.map((id) => (
+                <List.Item
+                  key={`r-${id}`}
+                  title={favRestNames[id] || 'Restaurant'}
+                  description="Tap to open"
+                  left={(props) => <List.Icon {...props} icon="store" />}
+                  right={(props) => <List.Icon {...props} icon="chevron-right" />}
+                  onPress={() => openRestaurant(id)}
+                />
+              ))}
+              {favDishes.map((d) => (
+                <List.Item
+                  key={`d-${d.id}`}
+                  title={`${d.name} • ₹${d.price}`}
+                  description={d.restaurantName}
+                  left={(props) => <List.Icon {...props} icon="food" />}
+                  right={() => (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <IconButton icon="cart-plus" size={20} onPress={() => addFavDish(d)} accessibilityLabel={`Add ${d.name} to cart`} />
+                      <IconButton icon="close" size={18} onPress={() => removeFavDish(d.id)} accessibilityLabel={`Remove ${d.name}`} />
+                    </View>
+                  )}
+                />
+              ))}
+            </>
+          )}
+        </AppCard>
+
+        <AppText variant="tiny" tone="muted" style={{ marginTop: 8, marginBottom: 4, letterSpacing: 0.5 }}>
           SUPPORT
         </AppText>
         <AppCard padded={false}>
@@ -225,9 +311,9 @@ export default function Profile({ navigation }: any) {
       </FormModal>
 
       <FormModal visible={pwdOpen} title="Change Password" onClose={() => setPwdOpen(false)} onSave={savePassword} saveLabel="Update" saving={pwdSaving}>
-        <AppTextField label="Current password" value={curPwd} onChangeText={setCurPwd} secure />
-        <AppTextField label="New password" value={newPwd} onChangeText={setNewPwd} secure placeholder="Min 6 characters" />
-        <AppTextField label="Confirm new password" value={confirmPwd} onChangeText={setConfirmPwd} secure />
+        <AppTextField label="Current password" value={curPwd} onChangeText={setCurPwd} secure secureToggle />
+        <AppTextField label="New password" value={newPwd} onChangeText={setNewPwd} secure secureToggle placeholder="Min 6 characters" />
+        <AppTextField label="Confirm new password" value={confirmPwd} onChangeText={setConfirmPwd} secure secureToggle />
       </FormModal>
 
       <FormModal

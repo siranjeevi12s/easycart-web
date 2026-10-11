@@ -152,7 +152,7 @@ function InnerApp() {
         <NavigationContainer ref={navigationRef} theme={navTheme}>
           {readyNoti && (
             <TouchableOpacity
-              style={{ backgroundColor: '#16A34A', padding: 12, alignItems: 'center', paddingTop: insets.top + 12 }}
+              style={{ backgroundColor: '#218653', padding: 12, alignItems: 'center', paddingTop: insets.top + 12 }}
               activeOpacity={0.9}
               onPress={() => navigationRef.current?.navigate('OrderTracking', { orderId: readyNoti._id })}
               accessibilityRole="button"

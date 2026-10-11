@@ -24,19 +24,35 @@ export const env = {
 };
 
 // Production fail-fast: booting with dev-default secrets means anyone holding
-// this repo can forge tokens. Crash loudly instead of running insecure.
+// this repo can forge tokens or payment webhooks. Crash loudly instead of running insecure.
 if (env.NODE_ENV === 'production') {
   const required: Array<[string, string]> = [
     ['JWT_SECRET', env.JWT_SECRET],
     ['JWT_REFRESH_SECRET', env.JWT_REFRESH_SECRET],
     ['MONGODB_URI', env.MONGODB_URI],
+    ['RAZORPAY_KEY_ID', env.RAZORPAY_KEY_ID],
+    ['RAZORPAY_KEY_SECRET', env.RAZORPAY_KEY_SECRET],
+    ['RAZORPAY_WEBHOOK_SECRET', env.RAZORPAY_WEBHOOK_SECRET],
   ];
   for (const [name, value] of required) {
-    if (!value || /dev-|dummy|change-me|localhost/.test(value)) {
+    if (!value || /dev-|dummy|change-me|changeme|placeholder|localhost/.test(value)) {
       throw new Error(`[env] ${name} must be set to a real value in production (refusing to boot with dev default)`);
     }
   }
   if (env.JWT_SECRET === env.JWT_REFRESH_SECRET) {
     throw new Error('[env] JWT_SECRET and JWT_REFRESH_SECRET must differ in production');
+  }
+  // Real Razorpay key ids always look like rzp_test_xxx / rzp_live_xxx — dummy
+  // values would silently enable mock payment mode (accept-anything signatures).
+  if (!/^rzp_(test|live)_/.test(env.RAZORPAY_KEY_ID)) {
+    throw new Error('[env] RAZORPAY_KEY_ID must be a real rzp_test_/rzp_live_ key in production (mock mode forbidden)');
+  }
+  if (env.RAZORPAY_KEY_SECRET.length < 8) {
+    throw new Error('[env] RAZORPAY_KEY_SECRET looks too short for production');
+  }
+  // Webhook secret signs every payment.captured callback. Without it the
+  // webhook handler cannot authenticate Razorpay and must refuse to run.
+  if (env.RAZORPAY_WEBHOOK_SECRET.trim().length < 16) {
+    throw new Error('[env] RAZORPAY_WEBHOOK_SECRET must be set (min 16 chars) in production — unverified webhooks are rejected');
   }
 }

@@ -9,6 +9,7 @@ import restaurantRoutes from './routes/restaurants';
 import menuRoutes from './routes/menu';
 import orderRoutes from './routes/orders';
 import paymentRoutes from './routes/payments';
+import promoRoutes from './routes/promos';
 import adminRoutes from './routes/admin';
 import { notFound, errorHandler } from './middleware/error';
 
@@ -74,6 +75,7 @@ app.use('/api/restaurants', restaurantRoutes);
 app.use('/api', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/promos', promoRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.use(notFound);

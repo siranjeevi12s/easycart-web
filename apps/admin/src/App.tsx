@@ -14,6 +14,8 @@ const Orders = lazy(() => import('./pages/Orders'));
 const Payments = lazy(() => import('./pages/Payments'));
 const Refunds = lazy(() => import('./pages/Refunds'));
 const Reviews = lazy(() => import('./pages/Reviews'));
+const Promotions = lazy(() => import('./pages/Promotions'));
+const PromoCampaigns = lazy(() => import('./pages/PromoCampaigns'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Admins = lazy(() => import('./pages/Admins'));
@@ -46,6 +48,8 @@ export default function App() {
         <Route path="/payments" element={<Protected><Payments /></Protected>} />
         <Route path="/refunds" element={<Protected><Refunds /></Protected>} />
         <Route path="/reviews" element={<Protected><Reviews /></Protected>} />
+        <Route path="/promotions" element={<Protected><Promotions /></Protected>} />
+        <Route path="/promo-campaigns" element={<Protected><PromoCampaigns /></Protected>} />
         <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
         <Route path="/analytics" element={<Protected><Analytics /></Protected>} />
         <Route path="/admins" element={<Protected><Admins /></Protected>} />

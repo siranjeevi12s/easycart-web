@@ -76,9 +76,27 @@ export const paymentService = {
     return env.RAZORPAY_ROUTE_ENABLED && hasRealKeys();
   },
 
+  /** True when the process is running with production semantics. */
+  isProduction(): boolean {
+    return env.NODE_ENV === 'production';
+  },
+
+  /** Throw in production when Razorpay is not really configured — mock mode
+   *  must never silently mark orders PAID with fake signatures there. */
+  assertLiveKeys(action: string): void {
+    if (this.isProduction() && !hasRealKeys()) {
+      throw Object.assign(
+        new Error(`Razorpay not configured for production (${action} refused — refusing mock mode)`),
+        { status: 503 }
+      );
+    }
+  },
+
   /**
    * Create a Razorpay order. Attaches a Route transfer when possible.
-   * Never throws for connectivity issues — falls back to mock so local dev works.
+   * Never throws for connectivity issues in development — falls back to mock
+   * so local dev works. In production it throws instead of returning a mock
+   * order (a mock order + test_success signature would verify anything).
    * Returns `transferAttached` so callers know the settlement path.
    */
   async createOrderIntent({
@@ -91,6 +109,9 @@ export const paymentService = {
     linkedAccountId,
     transfers: explicitTransfers,
   }: CreateOrderIntent) {
+    // Prod guard: with dummy/missing keys there is no gateway to charge —
+    // fail the checkout instead of issuing a mock order id anyone can "verify".
+    this.assertLiveKeys('createOrderIntent');
     const client = getClient();
     // Multi-seller transfers win when present; else single-restaurant transfer.
     const transfers = (explicitTransfers || [])
@@ -169,6 +190,16 @@ export const paymentService = {
           console.error('[paymentService] Razorpay orders.create failed, using mock:', err?.message || err);
         }
       }
+      // Gateway call failed after retries — in production surface the outage
+      // instead of a mock order that bypasses real payment.
+      if (this.isProduction()) {
+        throw Object.assign(new Error('Payment gateway unavailable — please retry'), { status: 502 });
+      }
+    }
+    if (this.isProduction()) {
+      // No client (mock mode) must never reach here in production; env.ts
+      // fail-fast should have stopped boot already. Double-guard regardless.
+      throw Object.assign(new Error('Razorpay not configured for production (refusing mock mode)'), { status: 503 });
     }
     const mockOrderId = `order_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     return {
@@ -184,8 +215,13 @@ export const paymentService = {
 
   /** HMAC-SHA256 checkout signature check (order_id|payment_id). */
   verifySignature({ razorpay_order_id, razorpay_payment_id, razorpay_signature }: VerifyPayload): boolean {
-    // Dev shortcut for mock mode only
-    if (razorpay_signature === 'test_success' && !hasRealKeys()) return true;
+    // Dev shortcut for mock mode only — NEVER in production: with dummy keys
+    // the literal string 'test_success' would verify ANY order/payment pair.
+    if (razorpay_signature === 'test_success') {
+      return !hasRealKeys() && !this.isProduction();
+    }
+    // No real secret configured → nothing can validly verify.
+    if (!hasRealKeys()) return false;
     try {
       const expected = crypto
         .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
@@ -228,8 +264,10 @@ export const paymentService = {
     }
   },
 
-  /** Create a full/partial refund. Mock mode returns a fake refund id. */
+  /** Create a full/partial refund. Mock mode returns a fake refund id (dev only). */
   async createRefund(paymentId: string, amountPaise?: number, notes?: any): Promise<{ id: string; status: string }> {
+    // A mock refund in production would mark orders REFUNDED without moving money.
+    this.assertLiveKeys('createRefund');
     const client = getClient();
     if (client && paymentId && !paymentId.startsWith('pay_mock')) {
       try {
@@ -242,6 +280,9 @@ export const paymentService = {
         console.error('[paymentService] refund failed:', err?.message || err);
         throw Object.assign(new Error(err?.message || 'Refund failed at gateway'), { status: 502 });
       }
+    }
+    if (this.isProduction()) {
+      throw Object.assign(new Error('Razorpay not configured for production (refusing mock refund)'), { status: 503 });
     }
     // Mock refund for dev
     return { id: `rfnd_mock_${Date.now()}`, status: 'processed' };

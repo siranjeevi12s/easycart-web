@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "EasyCart Restaurant",
+    "slug": "easycart-restaurant",
+    "scheme": "easycart-restaurant",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#F5C923"
+      },
+      "package": "com.easycart.restaurant"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "apiUrl": "https://easycart-g6end7e0c8hkhwe4.eastasia-01.azurewebsites.net"
+    }
+  }
+}

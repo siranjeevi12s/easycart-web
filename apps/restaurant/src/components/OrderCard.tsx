@@ -19,7 +19,7 @@ interface Props {
 export default function OrderCard({ order: o, onStatus, onPickup, onCancel, cancellingId, showRestaurant = false }: Props) {
   const theme = useTheme();
   const [code, setCode] = useState('');
-  const edge = o.orderStatus === 'PAID' ? brand.primary : o.orderStatus === 'READY' ? '#22c55e' : '#f59e0b';
+  const edge = o.orderStatus === 'PAID' ? brand.primary : o.orderStatus === 'READY' ? '#218653' : '#E6A21A';
 
   return (
     <Card variant="outlined" sx={{ borderLeft: `4px solid ${edge}` }}>

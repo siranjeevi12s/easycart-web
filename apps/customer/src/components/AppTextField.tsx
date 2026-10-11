@@ -1,4 +1,5 @@
 /** Text input primitive: Paper outlined field with label + error support. */
+import { useState } from 'react';
 import { TextInput as PaperInput } from 'react-native-paper';
 import type { StyleProp, ViewStyle } from 'react-native';
 
@@ -15,6 +16,8 @@ interface Props {
   error?: string;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** Shows an eye toggle for password fields. */
+  secureToggle?: boolean;
 }
 
 export function AppTextField({
@@ -30,14 +33,16 @@ export function AppTextField({
   error,
   disabled = false,
   style,
+  secureToggle = false,
 }: Props) {
+  const [hidden, setHidden] = useState(secure);
   return (
     <PaperInput
       label={label}
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      secureTextEntry={secure}
+      secureTextEntry={secureToggle ? hidden : secure}
       keyboardType={keyboardType}
       autoCapitalize={autoCapitalize}
       multiline={multiline}
@@ -47,6 +52,7 @@ export function AppTextField({
       mode="outlined"
       style={[{ marginBottom: 12 }, style]}
       accessibilityLabel={label}
+      right={secureToggle ? <PaperInput.Icon icon={hidden ? 'eye' : 'eye-off'} onPress={() => setHidden((h) => !h)} accessibilityLabel={hidden ? 'Show password' : 'Hide password'} /> : undefined}
     />
   );
 }

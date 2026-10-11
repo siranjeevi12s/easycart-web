@@ -47,7 +47,7 @@ export function AppButton({
       compact={compact}
       contentStyle={{ minHeight: compact ? 36 : 48 }}
       style={[
-        { borderRadius: 12 },
+        { borderRadius: 14 },
         destructive && { backgroundColor: theme.colors.error },
         style,
       ]}

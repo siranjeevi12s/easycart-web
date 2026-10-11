@@ -32,7 +32,7 @@ export default function Notifications() {
       {!items.length && <EmptyState message="All clear." hint="No pending approvals, stuck orders, or failed payments." />}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {items.map((n, i) => (
-          <Box key={i} sx={{ border: 1, borderColor: 'divider', borderLeft: 4, borderLeftColor: n.kind === 'error' ? '#ef4444' : n.kind === 'warning' ? '#f59e0b' : '#3b82f6', borderRadius: 2, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+          <Box key={i} sx={{ border: 1, borderColor: 'divider', borderLeft: 4, borderLeftColor: n.kind === 'error' ? '#D93636' : n.kind === 'warning' ? '#E6A21A' : '#3b82f6', borderRadius: 2, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
             <Box>
               <Box>{n.text}</Box>
               {n.at && <Box sx={{ fontSize: 12, color: 'text.secondary' }}>{fmtDate(n.at)}</Box>}

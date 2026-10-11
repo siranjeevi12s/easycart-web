@@ -238,7 +238,7 @@ export default function Payments() {
                   <TableCell><StatusChip status={status} kind={settled ? 'success' : status === 'REVERSED' || status === 'FAILED' ? 'error' : 'warning'} /></TableCell>
                   <TableCell>
                     {!settled && status !== 'REVERSED'
-                      ? <Button size="small" variant="outlined" disabled={settlingId === o._id} onClick={() => markSettled(o._id)} sx={{ borderColor: '#22c55e', color: '#16a34a' }}>{settlingId === o._id ? '…' : 'Mark settled'}</Button>
+                      ? <Button size="small" variant="outlined" disabled={settlingId === o._id} onClick={() => markSettled(o._id)} sx={{ borderColor: '#218653', color: '#218653' }}>{settlingId === o._id ? '…' : 'Mark settled'}</Button>
                       : <Typography variant="caption" color="text.secondary">{o.transferId || o.settlementRef || ''}</Typography>}
                   </TableCell>
                 </TableRow>

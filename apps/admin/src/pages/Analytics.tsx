@@ -58,8 +58,8 @@ export default function Analytics() {
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} minTickGap={24} />
                 <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip content={<ChartTooltip />} />
-                <Area type="monotone" dataKey="gmv" stroke="#22c55e" fill="#DCFCE7" name="GMV ₹" animationDuration={400} />
-                <Brush dataKey="date" height={24} stroke="#22c55e" travellerWidth={10} />
+                <Area type="monotone" dataKey="gmv" stroke="#218653" fill="#E3F2E9" name="GMV ₹" animationDuration={400} />
+                <Brush dataKey="date" height={24} stroke="#218653" travellerWidth={10} />
               </AreaChart>
             </ResponsiveContainer>
           </Box>
@@ -71,7 +71,7 @@ export default function Analytics() {
               Toggle GMV overlay • brush to zoom
             </Typography>
             <SeriesToggle
-              options={[{ key: 'gmv', label: 'GMV ₹ overlay', color: '#22c55e' }]}
+                options={[{ key: 'gmv', label: 'GMV ₹ overlay', color: '#218653' }]}
               active={countSeries}
               onChange={setCountSeries}
             />
@@ -82,7 +82,7 @@ export default function Analytics() {
                 <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                 <Tooltip content={<ChartTooltip />} />
                 <Bar dataKey="orders" fill={brand.primary} name="Orders" animationDuration={400} />
-                {countSeries.includes('gmv') && <Bar dataKey="gmv" fill="#22c55e" name="GMV ₹" animationDuration={400} />}
+                {countSeries.includes('gmv') && <Bar dataKey="gmv" fill="#218653" name="GMV ₹" animationDuration={400} />}
                 <Brush dataKey="date" height={20} stroke={brand.primary} travellerWidth={10} />
               </BarChart>
             </ResponsiveContainer>

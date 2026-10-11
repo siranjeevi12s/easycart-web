@@ -40,7 +40,7 @@ export default function Login({ navigation }: any) {
             Pre-order • Pay • Pick up without waiting
           </AppText>
           <AppTextField label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          <AppTextField label="Password" value={password} onChangeText={setPassword} secure />
+          <AppTextField label="Password" value={password} onChangeText={setPassword} secure secureToggle />
           <AppButton title="Login" onPress={submit} loading={busy} style={{ marginTop: 4 }} />
           <AppButton title="No account? Register" variant="text" onPress={() => navigation.navigate('Register')} style={{ marginTop: 4 }} />
           <AppCard outlined style={{ marginTop: 12, backgroundColor: theme.colors.primaryContainer }}>

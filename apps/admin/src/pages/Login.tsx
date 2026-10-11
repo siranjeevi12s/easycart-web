@@ -44,7 +44,7 @@ export default function Login() {
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', bgcolor: 'background.default', p: 2 }}>
-      <Card sx={{ maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(255,107,53,0.15)' }}>
+      <Card sx={{ maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(245,201,35,0.16)' }}>
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h5" fontWeight={800} gutterBottom>
             EasyCart <Box component="span" sx={{ color: brand.primary }}>Admin</Box>

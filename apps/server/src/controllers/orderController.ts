@@ -34,17 +34,29 @@ export const listOrders = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
   const role = req.user!.role;
   let filter: any = { isDeleted: { $ne: true } };
+  // Ids of restaurants this caller owns — a ?restaurantId= query may only
+  // NARROW this set, never replace it (replacing leaks any restaurant's
+  // orders, populated with customer PII).
+  let ownedRestaurantIds: string[] = [];
   if (role === 'customer') filter.customerId = userId;
   else if (role === 'restaurant') {
     const myRestaurants = await Restaurant.find({ ownerId: userId, isDeleted: { $ne: true } }).select('_id');
     const ids = myRestaurants.map((r) => r._id);
+    ownedRestaurantIds = ids.map((id: any) => id.toString());
     filter.restaurantId = { $in: ids };
   }
   if (req.query.status) filter.orderStatus = req.query.status;
   if (req.query.payment) filter.paymentStatus = req.query.payment;
-  // Safe without extra ownership check: the base filter already restricts to
-  // the caller's own restaurants, so a foreign id simply matches nothing.
-  if (req.query.restaurantId) filter.restaurantId = req.query.restaurantId;
+  if (req.query.restaurantId) {
+    const q = String(req.query.restaurantId);
+    if (!isValidId(q)) return res.status(400).json({ message: 'Invalid restaurantId' });
+    if (role === 'restaurant' && !ownedRestaurantIds.includes(q)) {
+      return res.status(403).json({ message: 'Forbidden: not your restaurant' });
+    }
+    // Customer scope (customerId) still applies on top, so customers can only
+    // ever see their own orders; admins are unrestricted by design.
+    filter.restaurantId = q;
+  }
   if (req.query.search) {
     const rx = new RegExp(String(req.query.search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     filter.orderNumber = rx;

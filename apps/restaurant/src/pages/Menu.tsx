@@ -82,7 +82,7 @@ export default function Menu() {
         <Box sx={{ mb: 2, overflowX: 'auto', pb: 1 }}>
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'nowrap', minWidth: 'max-content' }}>
             {restaurants.map((r) => (
-              <Chip key={r._id} label={r.name} onClick={() => setSelected(r._id)} color={selected === r._id ? 'primary' : 'default'} sx={selected === r._id ? { bgcolor: brand.primary, color: 'white', flexShrink: 0 } : { flexShrink: 0 }} />
+              <Chip key={r._id} label={r.name} onClick={() => setSelected(r._id)} color={selected === r._id ? 'primary' : 'default'} sx={selected === r._id ? { bgcolor: brand.primary, color: '#191919', flexShrink: 0 } : { flexShrink: 0 }} />
             ))}
           </Stack>
         </Box>

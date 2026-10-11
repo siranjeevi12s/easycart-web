@@ -8,6 +8,8 @@ const KIND: Record<string, 'success' | 'warning' | 'error' | 'info' | 'default'>
   PREPARING: 'warning', PROCESSING: 'warning', PENDING: 'warning', pending: 'warning', under_review: 'warning',
   FAILED: 'error', CANCELLED: 'error', REFUNDED: 'error', REVERSED: 'error', rejected: 'error', suspended: 'error',
   PICKED_UP: 'info',
+  active: 'success', scheduled: 'info', awaiting_approval: 'warning', payment_pending: 'warning', paused: 'warning',
+  expired: 'default', cancelled: 'default', refunded: 'info', rejected_promo: 'error',
 };
 export function StatusChip({ status }: { status: string }) {
   return <Chip label={status} size="small" color={KIND[status] || 'default'} sx={{ fontWeight: 700 }} />;
@@ -31,7 +33,7 @@ export function StatCard({ value, label, highlight }: { value: ReactNode; label:
   const { mode } = useThemeMode();
   void mode;
   return (
-    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 3, p: 2.5, bgcolor: highlight ? brand.primary : 'background.paper', color: highlight ? 'white' : 'text.primary', height: '100%' }}>
+    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 3, p: 2.5, bgcolor: highlight ? brand.primary : 'background.paper', color: highlight ? '#191919' : 'text.primary', height: '100%' }}>
       <Typography variant="h4" fontWeight={800}>{value}</Typography>
       <Typography color={highlight ? 'white' : 'text.secondary'} variant="body2">{label}</Typography>
     </Box>

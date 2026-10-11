@@ -4,9 +4,42 @@ import { connectDB } from '../config/db';
 import { User } from '../models/User';
 import { Restaurant } from '../models/Restaurant';
 import { MenuItem } from '../models/MenuItem';
+import { PromoPackage } from '../models/PromoPackage';
 // import { Order } from '../models/Order';
 
+/**
+ * DESTRUCTIVE dev-only script: wipes users/restaurants/menu and recreates
+ * them with the well-known password `password123`.
+ *
+ * NEVER run against the production (Atlas) database — it deletes everything.
+ * Guards below refuse to run when NODE_ENV=production or when the connection
+ * string looks like a hosted/prod DB, unless explicitly overridden with
+ * ALLOW_DESTRUCTIVE_SEED=true (e.g. for an ephemeral preview DB).
+ */
+function assertSafeToSeed(uri: string): void {
+  const override = process.env.ALLOW_DESTRUCTIVE_SEED === 'true';
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const looksProdEnv = nodeEnv === 'production';
+  const looksHostedDb =
+    /mongodb\+srv:\/\//i.test(uri) || /atlas|prod|production/i.test(uri);
+  if ((looksProdEnv || looksHostedDb) && !override) {
+    console.error(
+      '[seed] REFUSING to wipe this database.\n' +
+        `  NODE_ENV=${nodeEnv}\n` +
+        `  MONGODB_URI looks ${looksHostedDb ? 'hosted/prod-like' : 'production'}.\n` +
+        '  This script runs deleteMany() on users/restaurants/menu with a known password.\n' +
+        '  If you REALLY mean it (ephemeral DB only), re-run with ALLOW_DESTRUCTIVE_SEED=true.'
+    );
+    process.exit(1);
+  }
+  if (override) {
+    console.warn('[seed] ALLOW_DESTRUCTIVE_SEED=true — proceeding with WIPE despite prod-like target. Double-check this is an ephemeral DB!');
+  }
+}
+
 const seed = async () => {
+  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/easycart';
+  assertSafeToSeed(uri);
   await connectDB();
   await User.deleteMany({});
   await Restaurant.deleteMany({});
@@ -68,6 +101,18 @@ const seed = async () => {
   console.log('Seed done');
   console.log({ admin: admin.email, customer: customer.email, owner: owner.email, password: 'password123' });
   console.log({ r1: r1._id.toString(), r2: r2._id.toString() });
+
+  // Promotional packages are non-destructive reference data — upsert by name
+  // so re-seeds never duplicate them and existing campaigns keep working.
+  const promoPackages = [
+    { name: 'Spotlight — 7 days', description: 'Top of the Featured carousel for a week.', durationDays: 7, price: 499, priority: 10 },
+    { name: 'Spotlight — 30 days', description: 'A full month of premium placement.', durationDays: 30, price: 1499, priority: 10 },
+    { name: 'Boost — 7 days', description: 'Standard sponsored rotation for a week.', durationDays: 7, price: 199, priority: 5 },
+  ];
+  for (const p of promoPackages) {
+    await PromoPackage.updateOne({ name: p.name }, { $set: { ...p, isActive: true } }, { upsert: true });
+  }
+  console.log({ promoPackages: promoPackages.map((p) => p.name) });
   process.exit(0);
 };
 

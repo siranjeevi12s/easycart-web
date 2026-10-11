@@ -1,13 +1,23 @@
 import { View } from 'react-native';
 import { useEffect } from 'react';
 import { Icon, useTheme } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppText } from '../components/AppText';
 
 export default function Splash({ navigation }: any) {
   const theme = useTheme();
   useEffect(() => {
-    const t = setTimeout(() => navigation.replace('Login'), 1200);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    let timer: any = null;
+    (async () => {
+      const seen = await AsyncStorage.getItem('easycart_onboarded').catch(() => 'true');
+      if (cancelled) return;
+      timer = setTimeout(() => navigation.replace(seen ? 'Login' : 'Onboarding'), 1200);
+    })();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [navigation]);
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.primary, justifyContent: 'center', alignItems: 'center', padding: 24 }}>

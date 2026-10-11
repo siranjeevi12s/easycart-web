@@ -38,7 +38,7 @@ export default function Register({ navigation }: any) {
           <AppTextField label="Full Name" value={form.name} onChangeText={set('name')} autoCapitalize="words" />
           <AppTextField label="Email" value={form.email} onChangeText={set('email')} keyboardType="email-address" autoCapitalize="none" />
           <AppTextField label="Phone" value={form.phone} onChangeText={set('phone')} keyboardType="phone-pad" />
-          <AppTextField label="Password" value={form.password} onChangeText={set('password')} secure />
+          <AppTextField label="Password" value={form.password} onChangeText={set('password')} secure secureToggle />
           <AppButton title="Register" onPress={submit} loading={busy} style={{ marginTop: 4 }} />
           <AppButton title="Already have an account? Login" variant="text" onPress={() => navigation.navigate('Login')} style={{ marginTop: 4 }} />
         </ScrollView>

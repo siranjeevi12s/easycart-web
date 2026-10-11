@@ -43,13 +43,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <RestaurantIcon sx={{ color: 'white', fontSize: 20 }} />
             </Box>
             <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, whiteSpace: 'nowrap' }}>EasyCart <Box component="span" sx={{ color: brand.primary, display: { xs: 'none', sm: 'inline' } }}>Restaurant</Box></Typography>
-            <Chip label="Pre-Order" size="small" sx={{ ml: 1, bgcolor: mode === 'light' ? '#FFF2EC' : 'rgba(255,107,53,0.15)', color: brand.primary, display: { xs: 'none', lg: 'flex' } }} />
+            <Chip label="Pre-Order" size="small" sx={{ ml: 1, bgcolor: mode === 'light' ? '#FDF4D7' : 'rgba(245,201,35,0.15)', color: brand.primary, display: { xs: 'none', lg: 'flex' } }} />
           </Box>
           {/* Desktop nav */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
             {nav.map((n) => (
               <Button key={n.path} component={Link} to={n.path} startIcon={n.icon}
-                sx={{ color: loc.pathname === n.path ? brand.primary : 'text.secondary', fontWeight: loc.pathname === n.path ? 700 : 500, bgcolor: loc.pathname === n.path ? (mode === 'light' ? '#FFF2EC' : 'rgba(255,107,53,0.15)') : 'transparent', minHeight: 40, whiteSpace: 'nowrap' }}>
+                sx={{ color: loc.pathname === n.path ? brand.primary : 'text.secondary', fontWeight: loc.pathname === n.path ? 700 : 500, bgcolor: loc.pathname === n.path ? (mode === 'light' ? '#FDF4D7' : 'rgba(245,201,35,0.15)') : 'transparent', minHeight: 40, whiteSpace: 'nowrap' }}>
                 {n.label}
               </Button>
             ))}
@@ -80,7 +80,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <List sx={{ p: 1 }}>
           {nav.map((n) => (
             <ListItem key={n.path} disablePadding>
-              <ListItemButton component={Link} to={n.path} onClick={() => setOpen(false)} selected={loc.pathname === n.path} sx={{ borderRadius: 2, mb: 0.5, '&.Mui-selected': { bgcolor: mode === 'light' ? '#FFF2EC' : 'rgba(255,107,53,0.15)', color: brand.primary } }}>
+              <ListItemButton component={Link} to={n.path} onClick={() => setOpen(false)} selected={loc.pathname === n.path} sx={{ borderRadius: 2, mb: 0.5, '&.Mui-selected': { bgcolor: mode === 'light' ? '#FDF4D7' : 'rgba(245,201,35,0.15)', color: brand.primary } }}>
                 <ListItemIcon sx={{ color: loc.pathname === n.path ? brand.primary : 'text.secondary', minWidth: 36 }}>{n.icon}</ListItemIcon>
                 <ListItemText primary={n.label} primaryTypographyProps={{ fontWeight: loc.pathname === n.path ? 700 : 500 }} />
               </ListItemButton>

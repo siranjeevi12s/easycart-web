@@ -8,7 +8,7 @@ function build(mode: 'light' | 'dark'): MD3Theme {
   return {
     ...base,
     dark: mode === 'dark',
-    roundness: 12,
+    roundness: 14,
     colors: {
       ...base.colors,
       primary: p.primary,

@@ -145,7 +145,7 @@ export default function OrderTracking({ route }: any) {
             <View style={{ alignItems: 'center', marginTop: 12 }}>
               <QRCode value={qr.data || order.orderNumber} size={160} />
             </View>
-            <View style={{ backgroundColor: '#1A1A1A', padding: 10, borderRadius: 8, marginTop: 12 }}>
+            <View style={{ backgroundColor: '#191919', padding: 10, borderRadius: 8, marginTop: 12 }}>
               <AppText variant="bodyBold" tone="onPrimary" style={{ textAlign: 'center', letterSpacing: 1 }}>
                 {order.orderNumber}
               </AppText>

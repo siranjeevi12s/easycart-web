@@ -13,6 +13,8 @@ import ReceiptIcon from '@mui/icons-material/ReceiptLong';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import UndoIcon from '@mui/icons-material/Undo';
 import RateReviewIcon from '@mui/icons-material/RateReview';
+import OfferIcon from '@mui/icons-material/LocalOffer';
+import CampaignIcon from '@mui/icons-material/Campaign';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import AdminPanelIcon from '@mui/icons-material/AdminPanelSettings';
@@ -36,6 +38,8 @@ const NAV = [
   { label: 'Payments', path: '/payments', icon: <PaymentsIcon fontSize="small" /> },
   { label: 'Refunds', path: '/refunds', icon: <UndoIcon fontSize="small" /> },
   { label: 'Reviews', path: '/reviews', icon: <RateReviewIcon fontSize="small" /> },
+  { label: 'Promo Packages', path: '/promotions', icon: <OfferIcon fontSize="small" /> },
+  { label: 'Campaigns', path: '/promo-campaigns', icon: <CampaignIcon fontSize="small" /> },
   { label: 'Notifications', path: '/notifications', icon: <NotificationsIcon fontSize="small" /> },
   { label: 'Analytics', path: '/analytics', icon: <AnalyticsIcon fontSize="small" /> },
   { label: 'Admins', path: '/admins', icon: <AdminPanelIcon fontSize="small" /> },

@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { env } from '../config/env';
-import { paymentService } from '../services/paymentService';
+import { paymentService, hasRealKeys } from '../services/paymentService';
 import { Order } from '../models/Order';
 import { Payment } from '../models/Payment';
 import { Settlement } from '../models/Settlement';
@@ -633,14 +633,22 @@ export const webhook = async (req: any, res: Response) => {
 
   const secret = env.RAZORPAY_WEBHOOK_SECRET;
   const signature = req.headers['x-razorpay-signature'] as string;
-  const isDummy = !secret || secret.includes('dummy');
-  if (!isDummy) {
-    if (!signature || !paymentService.verifyWebhookSignature(raw, signature)) {
-      console.warn('[webhook] invalid signature — rejected');
-      return res.status(400).json({ message: 'Invalid webhook signature' });
+  const isProduction = env.NODE_ENV === 'production';
+  const secretWeak =
+    !secret || secret.trim().length < 16 || /dummy|change-me|changeme|placeholder/i.test(secret);
+  if (secretWeak) {
+    // NEVER accept unverified webhooks in production: without a real secret the
+    // amount/status in req.body is fully attacker-controlled and could mark
+    // orders PAID without payment. env.ts fail-fast should prevent boot, but
+    // refuse here too in case the process started before the guard existed.
+    if (isProduction) {
+      console.error('[webhook] RAZORPAY_WEBHOOK_SECRET missing/weak in production — refusing unverified webhook');
+      return res.status(500).json({ message: 'Webhook not configured' });
     }
-  } else {
     console.warn('[webhook] no RAZORPAY_WEBHOOK_SECRET configured — accepting unverified (dev only)');
+  } else if (!signature || !paymentService.verifyWebhookSignature(raw, signature)) {
+    console.warn('[webhook] invalid signature — rejected');
+    return res.status(400).json({ message: 'Invalid webhook signature' });
   }
 
   try {
@@ -661,10 +669,34 @@ export const webhook = async (req: any, res: Response) => {
           ? await Order.find({ _id: { $in: ids }, paymentStatus: { $ne: 'PAID' } })
           : await Order.findOne({ razorpayOrderId: rzpOrderId, paymentStatus: { $ne: 'PAID' } }).then((one: any) => (one ? [one] : []));
         const expected = toPaise(siblings.reduce((s, o: any) => s + o.totalAmount, 0));
+        // Amount/status must come from Razorpay's API, NOT from the webhook
+        // body (attacker-controlled even when signed, if the secret leaks, and
+        // fully forgeable when it is missing). A forger can put any `amount`
+        // in the JSON; only the gateway fetch is authoritative.
+        const authoritative = await paymentService.fetchPayment(rzpPaymentId).catch(() => null);
+        if (isProduction && hasRealKeys()) {
+          // In production with real keys there is always an authoritative
+          // record. Without it we cannot trust this callback — skip marking
+          // PAID (the client verify path re-fetches and will confirm legit
+          // payments). Acknowledge receipt so Razorpay stops retrying forgeries.
+          const orderMatches = authoritative && (!authoritative.order_id || authoritative.order_id === rzpOrderId);
+          if (!authoritative || !orderMatches) {
+            console.warn(`[webhook] no authoritative gateway record for ${rzpPaymentId} — ignoring`);
+            return res.json({ received: true, verified: false });
+          }
+          if (!['captured', 'authorized'].includes(authoritative.status)) {
+            console.warn(`[webhook] gateway status not capturable for ${rzpPaymentId}: ${authoritative.status}`);
+            for (const order of siblings) {
+              await markOrderFailed(order, `Gateway status not capturable: ${authoritative.status}`, authoritative);
+            }
+            return res.json({ received: true, verified: true });
+          }
+        }
+        const effectiveAmount = authoritative?.amount ?? paymentEntity?.amount;
         for (const order of siblings) {
-          // Amount cross-check before trusting the webhook
-          if (paymentEntity.amount && paymentEntity.amount !== expected) {
-            await markOrderFailed(order, `Webhook amount mismatch: ${paymentEntity.amount} vs ${expected}`, body);
+          // Amount cross-check before trusting the webhook (authoritative first)
+          if (effectiveAmount && effectiveAmount !== expected) {
+            await markOrderFailed(order, `Webhook amount mismatch: ${effectiveAmount} vs ${expected}`, authoritative || body);
           } else {
             const splitAccounts = new Set(
               ((payment?.rawPayload as any)?.transfers || []).map((t: any) => `${t.account}:${t.orderId}`)
@@ -680,6 +712,12 @@ export const webhook = async (req: any, res: Response) => {
             });
           }
         }
+        // Promo purchase riding the same gateway order id (no sibling orders):
+        // signature already verified above; amount cross-checked inside.
+        try {
+          const { confirmPromoFromWebhook } = await import('./promoController');
+          await confirmPromoFromWebhook(rzpOrderId, rzpPaymentId, authoritative?.amount);
+        } catch {}
       }
     } else if (event === 'payment.failed') {
       const rzpOrderId = paymentEntity?.order_id;

@@ -13,6 +13,16 @@ const start = async () => {
     console.log(`   Health: http://localhost:${env.PORT}/health`);
     console.log(`   DB: ${env.MONGODB_URI.includes('mongodb+srv') ? 'Atlas' : 'localhost'} -> ${env.MONGODB_URI.split('@')[1]?.split('/')[0] || 'local'}`);
   });
+  // Promo scheduler: activate due campaigns + expire finished ones (every 5 min)
+  const sweep = () =>
+    import('./controllers/promoController')
+      .then((m) => m.sweepPromos())
+      .then((r) => {
+        if (r.activated || r.expired) console.log(`[promos] sweep: +${r.activated} active, -${r.expired} expired`);
+      })
+      .catch((e) => console.error('[promos] sweep failed:', e?.message || e));
+  const sweepTimer = setInterval(sweep, 5 * 60 * 1000);
+  sweepTimer.unref?.();
   server.on('error', (err: any) => {
     if (err.code === 'EADDRINUSE') console.error(`❌ Port ${env.PORT} in use — run: taskkill /F /IM node.exe`);
     else console.error('Server error:', err);

@@ -35,10 +35,10 @@ export function renderCheckoutPage(p: CheckoutPageParams): string {
 <title>Pay • ${esc(p.restaurantName)} • EasyCart</title>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <style>
-  body { font-family: system-ui, sans-serif; background: #FFF8F5; margin: 0; padding: 24px; color: #1A1A1A; }
+  body { font-family: system-ui, sans-serif; background: #FFFFFF; margin: 0; padding: 24px; color: #191919; }
   .card { max-width: 420px; margin: 8vh auto; background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 8px 30px rgba(0,0,0,.08); text-align: center; }
-  .amt { font-size: 32px; font-weight: 800; color: #FF6B35; margin: 8px 0; }
-  .btn { background: #FF6B35; color: #fff; border: 0; border-radius: 12px; padding: 14px 20px; font-size: 16px; font-weight: 700; width: 100%; cursor: pointer; }
+  .amt { font-size: 32px; font-weight: 800; color: #9A6B0A; margin: 8px 0; }
+  .btn { background: #F5C923; color: #191919; border: 0; border-radius: 14px; padding: 14px 20px; font-size: 16px; font-weight: 700; width: 100%; cursor: pointer; }
   .ghost { background: #fff; color: #666; border: 1px solid #eee; margin-top: 8px; }
   .muted { color: #666; font-size: 13px; }
 </style>
@@ -77,7 +77,7 @@ export function renderCheckoutPage(p: CheckoutPageParams): string {
     name: 'EasyCart',
     description: ${JSON.stringify('Order ' + p.orderNumber + ' • ' + p.restaurantName)},
     prefill: { name: ${JSON.stringify(p.customerName || '')}, email: ${JSON.stringify(p.customerEmail || '')}, contact: ${JSON.stringify(p.customerPhone || '')} },
-    theme: { color: '#FF6B35' },
+    theme: { color: '#F5C923' },
     handler: function (resp) {
       document.getElementById('status').textContent = 'Payment received — returning to EasyCart…';
       backToApp({ orderId: appOrderId, razorpay_order_id: resp.razorpay_order_id, razorpay_payment_id: resp.razorpay_payment_id, razorpay_signature: resp.razorpay_signature });

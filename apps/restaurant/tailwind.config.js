@@ -5,8 +5,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: { DEFAULT: "#FF6B35", dark: "#E55A2B", light: "#FF8C61" },
-        surface: "#FFF8F5"
+        primary: { DEFAULT: "#F5C923", dark: "#E4B719", light: "#F9DE6B" },
+        surface: "#FFFFFF"
       }
     }
   },

@@ -9,7 +9,7 @@ import { ChartTooltip, SeriesToggle } from '../components/charts';
 import { brand } from '../theme';
 import { fmtINR } from '../hooks';
 
-const PIE_COLORS = [brand.primary, '#22c55e', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#64748b'];
+const PIE_COLORS = [brand.primary, '#218653', '#E6A21A', '#3b82f6', '#D93636', '#8b5cf6', '#64748b'];
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -50,7 +50,7 @@ export default function Dashboard() {
             <SeriesToggle
               options={[
                 { key: 'orders', label: 'Orders', color: brand.primary },
-                { key: 'gmv', label: 'GMV ₹', color: '#22c55e' },
+                { key: 'gmv', label: 'GMV ₹', color: '#218653' },
               ]}
               active={flowSeries}
               onChange={setFlowSeries}
@@ -63,10 +63,10 @@ export default function Dashboard() {
                 <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10 }} />
                 <Tooltip content={<ChartTooltip />} />
                 {flowSeries.includes('orders') && (
-                  <Area yAxisId="l" type="monotone" dataKey="orders" stroke={brand.primary} fill="#FFE8DE" name="Orders" animationDuration={400} />
+                  <Area yAxisId="l" type="monotone" dataKey="orders" stroke={brand.primary} fill="#FDF4D7" name="Orders" animationDuration={400} />
                 )}
                 {flowSeries.includes('gmv') && (
-                  <Area yAxisId="r" type="monotone" dataKey="gmv" stroke="#22c55e" fill="#DCFCE7" name="GMV ₹" animationDuration={400} />
+                  <Area yAxisId="r" type="monotone" dataKey="gmv" stroke="#218653" fill="#E3F2E9" name="GMV ₹" animationDuration={400} />
                 )}
                 <Brush dataKey="date" height={20} stroke="#D6D3D1" fill="transparent" travellerWidth={10} tickFormatter={(d) => String(d).slice(5)} />
               </AreaChart>

@@ -2,10 +2,11 @@
 import React from 'react';
 import { Text as RNText, type TextProps, type TextStyle } from 'react-native';
 import { useTheme } from 'react-native-paper';
-import { type } from '../theme/tokens';
+import { type, palette } from '../theme/tokens';
+import { useAppThemeMode } from '../theme/ThemeContext';
 
 type Variant = keyof typeof type;
-type Tone = 'text' | 'muted' | 'faint' | 'primary' | 'success' | 'warning' | 'error' | 'info' | 'onPrimary';
+type Tone = 'text' | 'muted' | 'faint' | 'primary' | 'success' | 'warning' | 'error' | 'info' | 'onPrimary' | 'star';
 
 interface Props extends TextProps {
   variant?: Variant;
@@ -16,16 +17,18 @@ interface Props extends TextProps {
 
 export function AppText({ variant = 'body', tone = 'text', children, style, ...rest }: Props) {
   const theme = useTheme();
+  const { mode } = useAppThemeMode();
   const colors: Record<Tone, string> = {
     text: theme.colors.onBackground,
     muted: theme.colors.onSurfaceVariant,
     faint: '#9CA3AF',
     primary: theme.colors.primary,
-    success: '#16A34A',
+    success: '#218653',
     warning: '#B45309',
     error: theme.colors.error,
     info: '#1D4ED8',
     onPrimary: theme.colors.onPrimary,
+    star: palette[mode].star,
   };
   return (
     <RNText style={[{ ...type[variant] } as TextStyle, { color: colors[tone] }, style]} {...rest}>

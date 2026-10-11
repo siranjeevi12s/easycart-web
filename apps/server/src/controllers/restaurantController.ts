@@ -58,13 +58,17 @@ export const updateRestaurant = async (req: AuthRequest, res: Response) => {
   if (!r || r.isDeleted) return res.status(404).json({ message: 'Not found' });
   if (r.ownerId.toString() !== req.user!.id && req.user!.role !== 'admin')
     return res.status(403).json({ message: 'Forbidden' });
-  // Payout flags + linked account can only change via PUT /:id/payout (validated flow).
-  // Approval fields are admin-only (PATCH /api/admin/...) — owners must never self-approve.
-  const { payoutEnabled, payoutVerified, payoutUpdatedAt, payoutAccountNumber, razorpayLinkedAccountId, routeOnboarded, approvalStatus, approvalNote, approvedAt, approvedBy, ...safe } = req.body || {};
-  void payoutEnabled; void payoutVerified; void payoutUpdatedAt; void payoutAccountNumber;
-  void razorpayLinkedAccountId; void routeOnboarded;
-  void approvalStatus; void approvalNote; void approvedAt; void approvedBy;
-  Object.assign(r, safe);
+  // WHITELIST: everything else is rejected. The old denylist missed ownerId
+  // (ownership transfer), isDeleted/isActive (delete/suspend bypass), isOpen,
+  // rating/ratingCount (fake ratings), payout fields (validated flow bypass),
+  // and approval fields (self-approve). Payout flags + linked account can only
+  // change via PUT /:id/payout (validated flow); approval stays admin-only.
+  const ALLOWED = ['name', 'description', 'address', 'phone', 'image', 'isOpen'] as const;
+  const updates: Record<string, unknown> = {};
+  for (const key of ALLOWED) {
+    if (req.body?.[key] !== undefined) updates[key] = req.body[key];
+  }
+  Object.assign(r, updates);
   await r.save();
   res.json(r);
 };
@@ -77,6 +81,8 @@ export const myRestaurants = async (req: AuthRequest, res: Response) => {
 export const toggleRestaurant = async (req: AuthRequest, res: Response) => {
   const r = await Restaurant.findById(req.params.id);
   if (!r || r.isDeleted) return res.status(404).json({ message: 'Not found' });
+  if (r.ownerId.toString() !== req.user!.id && req.user!.role !== 'admin')
+    return res.status(403).json({ message: 'Forbidden' });
   r.isActive = !r.isActive;
   await r.save();
   res.json(r);

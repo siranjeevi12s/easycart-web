@@ -5,6 +5,7 @@
     "scheme": "easycart",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "platforms": [
       "ios",
       "android",
@@ -15,7 +16,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#FFF8F5"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#F5C923"
       },
       "package": "com.siranjeevi12s.easycartcustomer"
     },

@@ -20,7 +20,7 @@ export function AppCard({ children, onPress, padded = true, outlined = false, st
       mode={outlined ? 'outlined' : 'elevated'}
       onPress={onPress}
       style={[
-        { borderRadius: 14, marginBottom: 12, backgroundColor: theme.colors.surface },
+        { borderRadius: 18, marginBottom: 12, backgroundColor: theme.colors.surface },
         style,
       ]}
       accessibilityLabel={accessibilityLabel}
@@ -36,7 +36,7 @@ export function CoverImage({ uri, width = 110, height = 110 }: { uri?: string; w
   return (
     <Image
       source={{ uri }}
-      style={{ width, height, borderTopLeftRadius: 14, borderBottomLeftRadius: 14 }}
+      style={{ width, height, borderTopLeftRadius: 18, borderBottomLeftRadius: 18 }}
       accessibilityRole="image"
     />
   );
